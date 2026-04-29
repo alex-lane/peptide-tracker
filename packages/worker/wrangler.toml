@@ -1,0 +1,31 @@
+name = "peptide-tracker-worker"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# AUTH_MODE controls Cloudflare Access JWT verification.
+# - "dev"  → Worker injects a synthetic principal (DO NOT deploy with this).
+# - "prod" → Real JWT verification against Cloudflare Access JWKS.
+[vars]
+AUTH_MODE = "dev"
+ENVIRONMENT = "development"
+
+# D1 binding will be added in M2/M3. Placeholder commented out so wrangler dev runs.
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "peptide-tracker-dev"
+# database_id = "REPLACE_AFTER_RUNNING_wrangler_d1_create"
+
+# ─── Staging ─────────────────────────────────────────────────────────────────
+[env.staging]
+name = "peptide-tracker-worker-staging"
+[env.staging.vars]
+AUTH_MODE = "prod"
+ENVIRONMENT = "staging"
+
+# ─── Production ──────────────────────────────────────────────────────────────
+[env.production]
+name = "peptide-tracker-worker"
+[env.production.vars]
+AUTH_MODE = "prod"
+ENVIRONMENT = "production"

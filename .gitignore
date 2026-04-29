@@ -1,1 +1,39 @@
+# dependencies
+node_modules/
+.pnpm-store/
 
+# build output
+dist/
+build/
+.vite/
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# test
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# env
+.env
+.env.*
+!.env.example
+
+# misc
+*.tsbuildinfo

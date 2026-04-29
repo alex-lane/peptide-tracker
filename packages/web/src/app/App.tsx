@@ -1,0 +1,24 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AppLayout } from './AppLayout';
+import { TodayPage } from '@/pages/today/TodayPage';
+import { InventoryPage } from '@/pages/inventory/InventoryPage';
+import { ProtocolsPage } from '@/pages/protocols/ProtocolsPage';
+import { MorePage } from '@/pages/more/MorePage';
+import { ConsentGate } from './ConsentGate';
+
+export function App() {
+  return (
+    <ConsentGate>
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<Navigate to="/today" replace />} />
+          <Route path="/today" element={<TodayPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/protocols" element={<ProtocolsPage />} />
+          <Route path="/more" element={<MorePage />} />
+          <Route path="*" element={<Navigate to="/today" replace />} />
+        </Route>
+      </Routes>
+    </ConsentGate>
+  );
+}

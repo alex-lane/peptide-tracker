@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    font-family: theme('fontFamily.sans');
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: theme('fontFamily.display');
+    font-weight: 600;
+  }
+
+  /* Numeric values render in mono — wrap dose figures in <span class="num">…</span> */
+  .num,
+  [data-numeric] {
+    font-family: theme('fontFamily.mono');
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Lab-notebook: ruled separators replace card shadows */
+  .ruled-y > * + * {
+    border-top: 1px solid theme('colors.paper.300');
+  }
+
+  /* Touch target floor for kitchen-glove use on calculator inputs */
+  .touch-lg {
+    min-height: 56px;
+  }
+}
+
+/* Dark mode: deep-ink ground, parchment ink */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: theme('colors.ink.300');
+    color: theme('colors.paper.100');
+  }
+}
