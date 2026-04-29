@@ -1,0 +1,22 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generateIcs — RFC-5545 surface invariants > snapshot: deterministic output for fixed inputs 1`] = `
+"BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//peptide-tracker//domain v0.1//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Sample
+X-PEPTIDE-PRIVACY:generic
+BEGIN:VEVENT
+UID:sched-a@p.app
+DTSTAMP:20260429T100000Z
+DTSTART:20260429T080000Z
+DURATION:PT5M
+RRULE:FREQ=DAILY
+SUMMARY:Scheduled dose — Alex
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR
+"
+`;
