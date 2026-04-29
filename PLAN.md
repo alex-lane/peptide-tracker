@@ -1,3 +1,4 @@
+<!-- /autoplan restore point: /c/Users/amlan/.gstack/projects/peptide-tracker/main-autoplan-restore-20260428-165519.md -->
 # Peptide Tracker — Product & Technical Plan
 
 ## Context
@@ -1023,3 +1024,947 @@ End-to-end checks once M0–M11 ship:
 | 4 | **Last-write-wins by `updated_at` for v1**, CRDT only if needed | A 2-4 person household rarely conflicts. CRDTs add complexity; defer until evidence demands it. |
 | 5 | **ICS via RRULE (one VEVENT per recurring schedule)** | Smaller payloads, friendlier to calendar clients' refresh logic. Switch to per-occurrence VEVENTs if exception handling proves painful. |
 | 6 | **Azure deferred** | Cosmos DB free tier is generous but the document model fights the relational shape we want. Azure SQL + SWA is viable but adds a second control plane vs Cloudflare-everywhere. Easy to revisit when commercializing. |
+
+---
+
+# AUTOPLAN REVIEW
+
+> Generated: 2026-04-28 | Branch: main | Commit: a8b57bd
+> Mode: SELECTIVE_EXPANSION (overridden by dual-voice consensus → see Premise Gate)
+
+---
+
+## Phase 1 — CEO Review
+
+### Step 0A — Premise Challenge
+
+The plan rests on five load-bearing premises. Three of them did not survive dual-voice review.
+
+| # | Premise as stated | Evidence cited | Verdict |
+|---|---|---|---|
+| P1 | A 2-person household has a real *sync* problem worth solving | None — asserted in §1 + §2 | **REJECTED** by both voices. Likely actual problem is habit-formation, not sync. |
+| P2 | "SaaS-readiness from v1" is near-zero cost | Implied by §11 framing | **REJECTED** by both voices. Cost is real: every infra choice is a v1 tax. |
+| P3 | Peptides are commercializable if you avoid medical-claim wording | §11.2 "frame as journaling tool" | **REJECTED** by both voices. The blockers are Stripe underwriting, App Store review, Meta/Google ad policies — none of which are wording problems. |
+| P4 | The user will still be using this in 6 months | Implicit | **UNTESTED.** No falsification criterion in plan. |
+| P5 | Tracking-only positioning is a sufficient legal shield | §7 + §11.2 | **PARTIALLY VALID** for personal use; weak shield for commercial distribution. |
+
+### Step 0B — Existing Code Leverage Map
+
+| Sub-problem | Existing solution | Reuse possible? |
+|---|---|---|
+| Reconstitution math | Peptide.do, PeptideCalculator.com (both free, calculator-only) | YES — reference UX, but no API to embed. |
+| Dose journaling | Bearable, Cronometer, MyFitnessPal supplement log | NO — none handle reconstitution; this is the genuine wedge. |
+| Calendar reminders | Apple/Google native calendar, Reminders apps | YES — `.ics` export works; hosted feed is overengineering for 2 users. |
+| Inventory burn-down | Spreadsheets (Reddit r/Peptides templates), Notion templates | YES — most users currently use these. Replacing them is the value prop. |
+| Multi-user shared state | Shared Apple Notes, shared spreadsheet, shared whiteboard | YES — these solve the actual household coordination need at zero engineering cost. |
+
+**Greenfield code starts at zero.** The leverage opportunity is *not building things competitors already do well*. Reconstitution + ledger is the unique value.
+
+### Step 0C — Dream State
+
+```
+CURRENT (no app exists)
+  → spreadsheet, mental math, whiteboard
+THIS PLAN as written (M0-M11)
+  → architectural masterpiece serving 2 humans, 6 months of build
+  → high probability the user stops logging before the Worker ships
+12-MONTH IDEAL (per dual-voice critique)
+  → first dose logged in week 1
+  → 6 weeks of personal usage data
+  → kill-or-expand decision based on actual behavior
+  → if expand: clinician-facing or calculator-first, not consumer peptide SaaS
+```
+
+### Step 0C-bis — Implementation Alternatives
+
+| Approach | Effort (CC) | Risk | Pros | Cons | Reuses |
+|---|---|---|---|---|---|
+| **A. Plan as written** (Cloudflare-everywhere, 11 milestones, live sync, hosted ICS, Access auth) | 4-6 weekends | High (overbuilding for 2 users) | SaaS-ready; multi-device; hosted feeds; full architectural elegance | Defers first-logged-dose by ~8 milestones; sunk-cost distortion when habit fails | Cloudflare ecosystem |
+| **B. Single-user-first MVP** (Pages + Dexie + JSON export + downloadable .ics; no Worker, no D1, no Access) — *RECOMMENDED by both voices* | 1-2 weekends | Low | First dose logged in week 1; cheapest validation; clean revert path; no infra to maintain | Defers household sync; sync becomes a future unlock, not v1 | Same Vite/Tailwind/Dexie/RRULE stack; identical domain layer ports forward |
+| **C. Calculator-only first product** (`peptide-calc.app` style — reconstitution + dose math, no log, no inventory) | 1 weekend | Low | Defensible wedge isolated; shippable ad-hoc; tells you whether anyone wants more | Skips the user's actual stated need (logging + inventory) | Domain math + UI shell |
+
+### Step 0D — Mode-specific scope analysis
+
+Original mode: SELECTIVE_EXPANSION. After dual-voice review, the appropriate mode is **SCOPE REDUCTION** — both voices independently recommend cutting M3 (Worker), M4 (sync), and the Worker portion of M9 (hosted feed) from v1. Eight milestones become four.
+
+### Step 0E — Temporal interrogation
+
+| Hour | What the implementer needs | Plan-as-written answer | Plan-B answer |
+|---|---|---|---|
+| HOUR 1 | "Where do I start?" | M0 scaffolding (3 packages, monorepo, two dev servers) | Single Vite app, `pnpm create vite` |
+| HOUR 2-3 | "What's the simplest thing that produces value?" | Domain layer tests (8 milestones from logging) | Reconstitution calculator wired to a save-preset list |
+| HOUR 4-5 | "Will my partner actually use this?" | Unanswerable — no UI for ~3 weekends | Already shippable to a phone via PWA install |
+| HOUR 6+ | "What did I just build?" | Half a sync engine | A working dose log |
+
+### Step 0F — Mode confirmation
+
+Dual-voice consensus recommends switching from **SELECTIVE_EXPANSION → SCOPE REDUCTION**. This is a User Challenge (see Premise Gate below) — the user's call.
+
+---
+
+## CEO Dual Voices — Consensus Table
+
+```
+═══════════════════════════════════════════════════════════════════════
+  Dimension                                Claude   Codex   Consensus
+  ──────────────────────────────────────── ──────── ─────── ──────────
+  1. Premises valid?                        NO       NO     CONFIRMED
+  2. Right problem to solve?                NO       NO     CONFIRMED
+  3. Scope calibration correct?             NO       NO     CONFIRMED
+  4. Alternatives sufficiently explored?    NO       NO     CONFIRMED
+  5. Competitive/market risks covered?      NO       NO     CONFIRMED
+  6. 6-month trajectory sound?              NO       NO     CONFIRMED
+═══════════════════════════════════════════════════════════════════════
+```
+
+**6/6 dimensions agree the plan as written has problems.** Both voices flagged identical CRITICAL items independently:
+
+- **CRITICAL** — Household sync is asserted, not validated. The real problem is likely habit formation.
+- **CRITICAL** — "SaaS-readiness from v1" is not near-zero cost; it's a v1 tax.
+- **CRITICAL** — Peptides-as-SaaS is structurally compromised (Stripe / App Store / Meta + Google ad policies). Wording fixes don't unblock.
+- **HIGH** — Single-user-first and calculator-first alternatives were dismissed without analysis.
+- **HIGH** — 11-milestone plan is future-justified overbuilding before user behavior is validated.
+
+### CODEX SAYS (CEO — strategy challenge)
+
+> [CRITICAL] "Household sync" is treated as a validated need when it is only asserted. For a two-person household, the dominant failure mode is usually not "we lacked multi-device sync"; it is "we never formed the habit of logging." You are optimizing for data consistency before proving repeated usage.
+>
+> [CRITICAL] "SaaS-readiness from v1 with minimal rewrite" is treated as almost free. It is not. SaaS difficulty here is not schema portability. It is distribution, payments risk, moderation/compliance burden, support overhead, legal positioning, and acquisition channel fragility.
+>
+> [CRITICAL] "Personal wellness tool" language will not neutralize platform risk if the product is obviously optimized for peptide administration. The relevant blockers are Stripe underwriting, app review interpretation, ad account restrictions, merchant account churn.
+>
+> [HIGH] The likely better framing is "high-friction dose math + inventory confidence for self-trackers" — generalizes across peptides, enzymes, supplements, compounded meds, vet/home dosing.
+>
+> [HIGH] The 11-milestone plan is classic future-justified overbuilding. You are planning sync engines and tenant boundaries before proving two people will log consistently for 30 days.
+>
+> Core blind spot: solving for a future investor narrative before proving a present user behavior.
+
+### CLAUDE SUBAGENT (CEO — strategic independence)
+
+> Verdict: **Reconsider scope.** Beautifully engineered plan for the wrong product.
+>
+> 1. [HIGH] Household sync solves a phantom requirement for 2 humans + 1 fridge.
+> 2. [HIGH] Unstated premises baked into the plan (will keep using; partner will adopt; SaaS path exists).
+> 3. [HIGH] 6-month regret scenario: full sync stack maintained for 1 user, partner stopped opening it after week 6.
+> 4. [HIGH] Dismissed alternatives — single-user, calculator-only, clinician-facing, native mobile — none analyzed.
+> 5. [MEDIUM] No competitive analysis — Peptide.do, PeptideCalculator, Bearable, Stack, Cronometer, Reddit templates.
+> 6. [CRITICAL] Scope dramatically miscalibrated — 11 milestones for a 2-person household.
+> 7. [CRITICAL] Peptide-as-SaaS commercialization trap (App Store, Stripe, Meta/Google ads, FDA enforcement on supplement-adjacent calculators).
+> 8. [MEDIUM] Sync-as-feature anti-pattern — every successful personal tracker launched single-device.
+>
+> Single biggest blind spot: the plan optimizes for SaaS-future-proofing without ever validating the household has a tracking problem worth solving.
+
+---
+
+## Section 1 — Architecture Review
+
+System design is internally consistent and the dependency graph is clean (see §4.2 in the plan). The domain layer being framework-free is the right call regardless of scope decision. The `withTenant()` enforcement pattern + ESLint rule is a strong tenant-isolation primitive **if** the plan keeps the multi-tenant boundary; under SCOPE_REDUCTION it becomes dead code. Single-points-of-failure: Cloudflare (hosting, edge auth, DB, ICS feed all on one vendor). Rollback procedure: not documented. **Issues:** dependency on Cloudflare Access creates lock-in proportional to how much auth code we *don't* write.
+
+## Section 2 — Error & Rescue Map
+
+Greenfield: no existing code to map. Forward-looking gaps the plan should address:
+
+| METHOD/CODEPATH | WHAT CAN GO WRONG | EXCEPTION CLASS | RESCUED? | RESCUE ACTION | USER SEES |
+|---|---|---|---|---|---|
+| `DoseLogRepo.create()` | IDB transaction abort mid-write | `DexieError`/`AbortError` | **NOT YET** | retry once; if persistent, roll back UI optimistic update | "Couldn't save — try again" toast |
+| Calculator dose math | Division by zero (no concentration) | `MathError` | spec'd in §7.6 | refuse + show fix-up | Red banner explaining unit need |
+| ICS export | RRULE with no occurrences | `EmptyFeedError` | **NOT YET** | emit valid empty calendar | Silent (downloaded file is empty calendar) |
+| Sync push | Worker 5xx during outbox drain | network error | **NOT YET** | exponential backoff, surface offline state | Top-bar offline indicator |
+| Reconstitution | Vial volume = 0 | `MathError` | spec'd in §7.6 | refuse | Inline form error |
+
+Plan should add explicit error-rescue specification for the listed gaps.
+
+## Section 3 — Security & Threat Model
+
+| Threat | Likelihood | Impact | Mitigation status |
+|---|---|---|---|
+| ICS feed token leak (URL in calendar metadata) | M | M (dose schedule exposure) | Spec'd: opaque, signed, rotatable. **Privacy mode default should be `Generic` not `Full`** — currently unstated. |
+| Cloudflare Access misconfig (open allow-list) | L | H (full data exposure) | Plan mentions allowlist; **needs explicit "deny by default" instruction in deploy docs**. |
+| XSS via user-entered notes (markdown) | M | M | **Unstated.** Plan needs to commit to a sanitizer (DOMPurify) for any rendered notesMd. |
+| Stolen JSON export | L | M | Spec'd: optional passphrase encryption. Default-off; recommend default-on for export. |
+| Dose-log replay / collision attack on `/sync/push` | L | L | LWW makes this benign; document as accepted risk. |
+
+## Sections 4-11 — Summary
+
+- **§4 Data Flow:** state machines (vial status, schedule status) implicit but unspecified — recommend ASCII diagrams in §6 of plan.
+- **§5 Code Quality:** N/A (greenfield).
+- **§6 Test Review:** see Phase 3 Eng.
+- **§7 Performance:** Dexie queries unbounded by household size — fine for 2 users. Worker query patterns OK at edge. Charts in §6.7 will need pagination at >5k log entries (forecastable in 2 years).
+- **§8 Observability:** **gap.** Plan has no logging/observability strategy. For a tracker users rely on, missed-dose silent failures must be visible somewhere.
+- **§9 Deployment:** `wrangler deploy` only. **No staging env mentioned**, no rollback procedure, no DB migration testing path. Add §9.5 to plan.
+- **§10 Long-Term Trajectory:** see Premise Gate below.
+- **§11 Design & UX:** handed to Phase 2.
+
+## Phase 1 — Failure Modes Registry
+
+| CODEPATH | FAILURE MODE | RESCUED? | TEST? | USER SEES | LOGGED? | CRITICAL GAP? |
+|---|---|---|---|---|---|---|
+| Calculator unit mismatch (mg vs mcg) | Wrong dose 1000× off | Spec'd warning | TODO | Red warning before save | Should be | **YES — flagged in §7.8 as v1 must-have** |
+| Vial expiry passed | User logs against expired vial | Spec'd override-with-confirm | TODO | Strikethrough + confirm modal | Should be | NO |
+| Calendar feed token leak | Dose schedule exposed | Spec'd rotation | TODO | n/a (silent) | Should be | NO |
+| Outbox stuck offline forever | Mutations never sync | Not spec'd | NO | **Currently invisible** | NO | **YES — silent failure** |
+| Two devices with diverged batches | Inventory shows wrong remaining | LWW spec'd | TODO | Eventual consistency only | NO | NO (under SCOPE_REDUCTION this is moot) |
+
+## Phase 1 — NOT in scope
+
+- Computer-vision vial barcode scan (already deferred, §2 Risky/Cut)
+- AI correlation insights (already deferred, §2)
+- iOS native push reminders (best-effort PWA only)
+- Multi-household / sharing across non-household users
+- Real-time presence / "who is logging now"
+
+## Phase 1 — What already exists
+
+Greenfield project. The "exists" axis is the broader market, mapped in Step 0B above. No code to leverage in this repo.
+
+## Phase 1 — Dream state delta
+
+Plan-as-written **moves further** from the 12-month ideal: infrastructure-first sequencing means the kill-or-expand decision happens after sunk cost is high. Plan-B (single-user MVP) lands closer to the ideal — faster signal, cheaper to abandon, cleaner expansion path.
+
+## Phase 1 — CEO Completion Summary
+
+| Dimension | Result |
+|---|---|
+| Mode (proposed) | **SCOPE_REDUCTION** (overridden from SELECTIVE_EXPANSION by dual-voice consensus) |
+| System audit | Internally consistent for the scope it states; scope itself is questioned |
+| Step 0 decisions | 5 premises challenged, 3 rejected, 2 accepted with caveats |
+| Sections 1-11 issues | 1 CRITICAL gap (silent sync failure), 4 HIGH gaps (XSS, observability, staging env, default privacy mode), several MEDIUM |
+| NOT in scope (count) | 5 deferred items |
+| Registries produced | Error & Rescue (5 rows), Failure Modes (5 rows, 2 critical) |
+| Outside voices | Codex CEO ✓ + Claude subagent CEO ✓ |
+| User Challenge raised | **YES — premise gate below** |
+
+---
+
+## PREMISE GATE — User Challenge (NOT auto-decided)
+
+**Both voices independently recommend the user's stated v1 scope should change.** This is a User Challenge per autoplan rules and goes to the user, not auto-decision.
+
+**You said:** v1 = Cloudflare Pages + Workers + D1 + Access + live sync + hosted ICS feeds + 11 milestones, SaaS-ready from day one.
+
+**Both models recommend:** scope down to a single-user PWA with Dexie + JSON export + downloadable `.ics`. Defer Workers, D1, Access, hosted feeds, and SaaS-readiness work to v1.5+ — gated on actual usage data (e.g., "still logging after 6 weeks").
+
+**Why:**
+1. Household sync is asserted, not validated. The dominant failure mode for personal trackers is habit-formation, not sync.
+2. "SaaS-readiness from v1" is a v1 tax, not free optionality. The actual SaaS blockers (Stripe / App Store / ads / FDA) are not architecture problems.
+3. Peptide-SaaS commercialization is structurally compromised — payment processors, ad platforms, and app review will not yield to "personal wellness tool" framing.
+4. 11 milestones defer the first-logged-dose moment by ~8 milestones. Sunk cost will distort the kill/keep decision.
+
+**What we might be missing:**
+- Your wife and you may genuinely have a daily multi-device coordination problem that JSON export can't solve. Models can't see this.
+- You may have signed up for a strict household protocol (e.g., post-surgery rehab, shared peptide stack) where divergent inventory is dangerous. Models don't know.
+- You may want this as a portfolio piece / SaaS practice run regardless of viability. That's a valid reason models can't weigh.
+- Cloudflare-everywhere with the Worker may be more fun to build than a constrained MVP, and "fun to build" is a real reason to ship a real artifact.
+
+**If we're wrong, the cost is:** you ship a single-user MVP, hit the household-sync wall in week 2, and rebuild M3+M4 on top — adding ~2 weekends of rework versus building it correctly from day one.
+
+**If you're wrong, the cost is:** you spend 4-6 weekends on infrastructure for a workflow that you and your wife abandon by week 6, and the architectural elegance becomes a graveyard.
+
+The user's original direction stands unless explicitly changed.
+
+### PREMISE GATE — User Decision (recorded 2026-04-28)
+
+**Q1 (v1 scope):** User overrode the dual-voice consensus. **Plan-as-written stands.** Cloudflare Pages + Workers + D1 + Access + live sync + hosted ICS feeds + 11 milestones remains v1.
+
+**Q2 (§11 commercialization):** User clarified the SaaS framing. Updates to apply:
+- "Commercialization" means **consumer signup for personal use only**, mirroring the user's own use case (a household tracking its own peptides). NOT B2B clinical, NOT clinics, NOT FDA-regulated facilities.
+- No dose recommendations anywhere — already the plan's stance, reaffirmed.
+- **NEW REQUIREMENT (added by user):** peptide *information as an educational/learning resource* for end users. Reference content (what each peptide is, mechanism, common research-literature half-life/route/side-effects, citations) without prescribing dose ranges.
+
+### Resulting plan deltas (apply during implementation, not by autoplan)
+
+1. **§11 Future Commercialization Path** — rewrite to position as consumer-personal-use SaaS only. Remove implicit B2B/clinical framing. Add explicit clauses: "Not for use in clinical settings, not for prescribing decisions, no dose recommendations." Acknowledge the residual platform-risk register honestly (Stripe/App Store/ads policies still apply regardless of personal-use framing) — keep the §10.5 honest-risk posture.
+2. **NEW §3.10 — Education / Information module** (added to feature breakdown):
+   - Per-product reference page: name, class, mechanism (1-paragraph), common research-literature half-life and route, commonly-reported side effects, citations to source studies (pubmed/doi links), legal/regulatory note (e.g., "Sold as research chemical in [jurisdictions]; consult a qualified medical professional").
+   - **Hard rule:** no dose ranges. No "typical dose is X". Show study-reported doses *only as direct quotations* from cited studies, never as a UI-rendered "recommended" anything. The user enters their own protocol; the app does not suggest one.
+   - Content source: curated by the user (markdown files in repo), versioned, contributor-friendly. v1 ships with ~10-20 commonly-tracked peptides; users can add their own.
+   - Surfaced as: a tab on each `InventoryItem` detail view (Reference / History / Notes) and an Education section in main nav.
+3. **Data model addition:** `EducationContent` entity (peptide_slug, name, class, mechanism_md, half_life_text, route, side_effects[], citations[], regulatory_note_md, last_updated). Sync via the same Cloudflare D1 (`household_id` is null for global content; falls back to seed content from a JSON shipped with the build).
+4. **Audit trail rule:** every page that renders `EducationContent` must surface the disclaimer "This is educational reference, not medical advice. The user is responsible for their own protocol. No dose is recommended by this app."
+
+Phase 2-3.5 below review the plan **with these deltas folded in**.
+
+---
+
+## Phase 2 — Design Review
+
+### Step 0 — Design Scope
+
+- Initial completeness: **3/10**. §8 is mostly an IA dump and bullet lists. No typography scale, no color tokens, no spacing rhythm, no motion language, no defined empty/error/loading/sync states, no actual desktop layout.
+- DESIGN.md status: does not exist.
+- Reuse map: locked stack is shadcn/ui + Radix + Tailwind v4 + Lucide + Recharts. This is the absolute industry default and will produce default-2026-SaaS-dashboard look without intentional intervention.
+
+### Design Dual Voices — Consensus Table
+
+```
+═════════════════════════════════════════════════════════════════════════
+  Dimension                                  Claude   Codex   Consensus
+  ──────────────────────────────────────────  ──────── ─────── ──────────
+  1. Information hierarchy serves the user?    NO       NO     CONFIRMED
+  2. Interaction states fully specified?       NO       NO     CONFIRMED
+  3. Responsive strategy intentional?          NO       NO     CONFIRMED
+  4. Accessibility specified beyond aspirational? NO    NO     CONFIRMED
+  5. AI-slop risk addressed (anti-default)?    NO       NO     CONFIRMED
+  6. Visual tokens locked?                     NO       NO     CONFIRMED
+  7. Education placement appropriate?          NO       NO     CONFIRMED (CRITICAL)
+═════════════════════════════════════════════════════════════════════════
+```
+
+**7/7 dimensions agree.** Notable independent convergence (both voices, no shared context):
+- Both flagged **Education in primary nav** as the single most distribution-sensitive design decision. Both recommend the *exact same fix*: Inventory-item-detail Reference tab + secondary entry under "More" (or settings sub-screen), never primary nav. Independent CRITICAL.
+- Both flagged the **default-shadcn aesthetic risk**. Codex: "utility-lab, not SaaS." Claude subagent: "lab-notebook (serif display + mono numerics + paper-toned)." Same family of recommendation.
+- Both demanded an explicit **screen × state matrix** before implementation.
+- Both flagged **dose-logging tap count** is misrepresented in the plan (claimed "1 thumb tap"; actual cold-launch path is 4-7 taps).
+- Both flagged **desktop strategy** as empty language.
+
+### CODEX SAYS (design — UX challenge)
+
+> [CRITICAL] IA is organized around feature silos, not the core job. Today/Inventory/Protocols/Insights/Settings is developer-nav. Today is stuffed with 5 competing priorities above the only time-critical action.
+>
+> [CRITICAL] Education is positioned like a product feature, not a supporting reference. Main-nav + seeded content makes the app look like a peptide reference catalog — exactly the distribution trap the CEO review warned about.
+>
+> [HIGH] Interaction-state coverage is patchy and biased toward happy-path math errors. Required states missing across every screen.
+>
+> [HIGH] "Mobile-first but desktop-friendly" is empty language. Lock breakpoints, lock what changes at ≥1024px and ≥1280px.
+>
+> [HIGH] Accessibility is QA-afterthought. Body diagram needs a parallel list mode. iOS decimal locale handling is unsolved by inputmode alone. Cloudflare Access first-run on the spouse's phone is ignored.
+>
+> [HIGH] Will ship looking like default shadcn SaaS. Lock anti-default identity: utility-lab, not SaaS. Dense but calm. Restrained motion. No growth-dashboard aesthetics.
+>
+> [MEDIUM] Visual system underspecified. No typography, no tokens, no motion language.
+>
+> [MEDIUM] Calendar subscription needs platform-specific flows, not a naked URL.
+
+### CLAUDE SUBAGENT (design — independent review)
+
+> Verdict: beautifully engineered domain spec wearing designer's clothes that don't fit. The plan defers ~30 design decisions to the implementer.
+>
+> 1. [CRITICAL] No primary-action shortcut for "log a dose" — center-docked persistent action missing.
+> 2. [CRITICAL] Education module placement breaks the 5-tab thumb-reach convention and signals "drug reference app" to App Store reviewers. Drop from primary nav.
+> 3. [HIGH] Disclaimer pattern unspecified — recommend bottom-anchored persistent footer + first-time blocking modal.
+> 4. [HIGH] Missing interaction states (full per-screen audit produced).
+> 5. [HIGH] Glove-friendly reconstitution UX is asserted but not designed.
+> 6. [HIGH] First-time user emotional arc is undefined — Cloudflare OTP-first feels like corporate VPN, not a wellness tool.
+> 7. [HIGH] Wife's first sign-in friction unaddressed.
+> 8. [HIGH] Calendar subscription UX glossed.
+> 9. [HIGH] AI-slop risk high — recommend lab-notebook anti-default.
+> 10. [HIGH] Specificity vacuum — no type scale, no tokens, no motion.
+> 11-16. [MEDIUM] Desktop, body-diagram a11y, decimal-keyboard, citation rendering, education editing UX, motion personality.
+
+### Design Litmus Scorecard (post-review targets)
+
+| Check | Pre-review | Target | Locked-in fix |
+|---|---|---|---|
+| 1. Brand unmistakable on first paint | 2/10 | 8/10 | Lab-notebook / utility-lab anti-default identity (TASTE — see gate). |
+| 2. Strong visual anchor on every screen | 3/10 | 8/10 | Big-Result-Tile in calculator; Pending-Doses-as-hero on Today. |
+| 3. Scannable by headlines | 4/10 | 9/10 | Display serif headings + numeric mono (or Codex's compact-label / large-numeric-readouts variant). |
+| 4. Each section has one job | 3/10 | 9/10 | Today = task screen, not dashboard. Move warnings/burn-down/recent below the fold or to Insights. |
+| 5. Cards necessary (not card-soup) | 2/10 | 8/10 | ≤3 card types on Today. No KPI tiles. No default shadcn Card stack for every section. |
+| 6. Motion improves hierarchy | 3/10 | 8/10 | 150-200ms functional only. No decorative bounce. Dose-save animation is the receipt; toast is secondary. |
+| 7. Premium without decorative shadows | 4/10 | 9/10 | Zero shadows. Separators only. High-contrast neutrals, one warning hue, one action hue. |
+
+### Per-screen state matrix (must be filled by implementation)
+
+The plan defers most of these. Locking the minimum-required matrix here.
+
+| Screen | loading | empty | error | success | offline | sync-pending | sync-conflict | partial | expired-data | no-permission |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Today | TODO | spec'd | TODO | spec'd (toast) | TODO | TODO | TODO | TODO | n/a | TODO |
+| Inventory list | TODO | TODO | TODO | n/a | TODO | per-row dot | TODO | TODO | strikethrough vials | TODO |
+| Inventory detail | TODO | n/a | TODO | TODO | TODO | TODO | TODO | TODO | spec'd (override-confirm) | TODO |
+| Calculator | n/a | spec'd | spec'd (math) | spec'd (preset) | n/a | n/a | n/a | n/a | n/a | n/a |
+| Protocol builder | TODO | TODO | TODO | TODO | TODO | TODO | TODO | TODO | n/a | TODO |
+| Dose log flow | TODO | n/a | TODO | spec'd (undo) | **CRITICAL** | TODO | TODO | TODO | spec'd (expired-vial-confirm) | TODO |
+| Calendar settings | TODO | n/a | TODO | TODO | TODO | TODO | n/a | n/a | revoked-token | TODO |
+| Education | TODO | TODO | TODO | n/a | cached-copy | n/a | n/a | n/a | citation-broken | TODO |
+
+### Design Decisions to Lock (from both voices)
+
+These are decisions the plan currently defers to the implementer. Both voices recommend locking them now:
+
+1. **Visual identity** — anti-default direction (Codex: utility-lab; Subagent: lab-notebook). Pick one. **TASTE DECISION** → final gate.
+2. **Bottom-nav center-action** — center-docked "Log" (Subagent recommendation). Codex says reduce to 4 tabs + More. **TASTE DECISION** → final gate.
+3. **Education placement** — both recommend Inventory-detail-only + secondary under More, not primary nav. **USER CHALLENGE** (overrides the user's stated "Education section in main nav") → final gate.
+4. **Disclaimer pattern** — bottom-anchored footer + first-time blocking modal (Subagent). Codex agrees: persistent disclaimer block per page.
+5. **Citation rendering** — superscript footnote markers + end-of-page list with DOI links. No abstract embedding.
+6. **Education editor** — structured fields + markdown only (no rich text); citations as required structured pairs.
+7. **Typography scale** — locked: 13/15/17/22/28 + mono-14 numerics, family TBD per identity choice.
+8. **Spacing scale** — 4/8/12/16/24/32 (4px base).
+9. **Border-radius scale** — 0/4/12 (opinionated subset).
+10. **Shadow scale** — none. Separators only.
+11. **Motion language** — 120ms ease-out for state changes; 240ms ease-in-out for sheet/modal; no spring physics.
+12. **Density** — comfortable on mobile, compact on desktop.
+13. **Calendar URL share UX** — provider-specific buttons (Apple / Google / Outlook / Copy URL + QR), each with platform-specific instructions inline. Default privacy = `generic`.
+14. **Body diagram** — parallel list mode (chips grouped by region) alongside SVG. Both keyboard-navigable. Site labels for screen readers include last-used recency.
+15. **Decimal-keyboard locale handling** — accept both `,` and `.`, normalize aggressively, unit-test the parser.
+16. **Cloudflare Access onboarding** — bespoke "value before consent" pre-auth screen + post-auth "Add to Home Screen" inline instruction. Add `target="_blank"` and "Open in Safari" hint to the invite email to avoid in-app browser session siloing.
+17. **Desktop layout** — at ≥1024px: bottom-nav becomes 240px left rail; Today becomes 2-column (Pending left, warnings/activity right); inventory detail becomes inline split-pane. At ≥1280px: rail collapses to icons; max content width 960/1280 (forms/dashboards); calculator gets persistent right-context rail for "show your work."
+
+### Phase 2 — NOT in scope (deferred)
+
+- Custom-illustrated empty states (use typography-led placeholders for v1).
+- Onboarding video / animated walkthrough.
+- Internationalization beyond decimal-locale parsing.
+- Per-user theme customization.
+
+### Phase 2 — Completion Summary
+
+| Pass | Pre-review | Post-review target | Status |
+|---|---|---|---|
+| 1. Information Architecture | 3/10 | 9/10 | Restructure required (Today = task; Education out of nav). |
+| 2. Interaction State Coverage | 3/10 | 9/10 | State matrix produced; implementer must fill. |
+| 3. User Journey & Emotional Arc | 4/10 | 8/10 | First-run + reconstitution + spouse-onboard scenarios specified. |
+| 4. AI-Slop Risk | 2/10 | 9/10 | Anti-default identity decision raised to gate. |
+| 5. Design System Alignment | n/a | 9/10 | DESIGN.md does not exist; tokens locked above. |
+| 6. Responsive & Accessibility | 3/10 | 8/10 | Breakpoints + body-diagram parallel list + a11y locked. |
+| 7. Unresolved Design Decisions | many | 0 | 17 decisions surfaced; 3 raised to gate; 14 locked. |
+
+**Phase 2 verdict:** UI scope review identified 1 USER CHALLENGE (Education placement) and 2 TASTE DECISIONS (visual identity, bottom-nav center action) for the final gate. The rest of the design decisions are locked above.
+
+---
+
+## Phase 3 — Eng Review
+
+### Step 0 — Scope Challenge (greenfield-aware)
+
+- **Code leverage:** zero existing codebase. Reuse opportunity is at the npm-package level. The plan picks Dexie + Drizzle + Hono + rrule + ics + zod + tanstack-query — all reasonable Layer-1 / Layer-2 choices. Two are at risk in the Workers runtime (see consensus item #5).
+- **Minimum scope:** if the user had not overridden the CEO consensus, M3+M4+M9-Worker would be cut. They were kept by user decision.
+- **Complexity check:** 11 milestones × ~5 files each ≈ 55 files. Above the 8-file/2-class smell threshold from the eng-review heuristic. Already raised at the CEO premise gate; user accepted.
+- **Distribution:** PWA + Cloudflare Pages + Worker — Wrangler covers it; install method is documented.
+
+### Eng Dual Voices — Consensus Table
+
+```
+═══════════════════════════════════════════════════════════════════════
+  Dimension                                Claude   Codex   Consensus
+  ──────────────────────────────────────── ──────── ─────── ──────────
+  1. Architecture sound?                    NO       NO     CONFIRMED
+  2. Test coverage sufficient?              NO       NO     CONFIRMED
+  3. Performance risks addressed?           NO       NO     CONFIRMED
+  4. Security threats covered?              NO       NO     CONFIRMED
+  5. Error paths handled?                   NO       NO     CONFIRMED
+  6. Deployment risk manageable?            NO       NO     CONFIRMED
+═══════════════════════════════════════════════════════════════════════
+```
+
+**6/6 dimensions agree.** Independent convergence on 12 specific findings — both voices, no shared context, identical fixes proposed for the worst items. This is the highest-confidence consensus the autoplan pipeline produces.
+
+### Cross-phase themes (Phase 1 + Phase 3)
+
+Two themes appeared in both CEO and Eng phases independently:
+- **Theme: "the plan papers over hard problems with elegant primitives."** CEO flagged this as "engineering thoroughness as substitute for product validation." Eng flagged it as "sync model treated as solved while being fundamentally under-specified." Same shape, different layer.
+- **Theme: "deployment / operations is missing."** CEO didn't have visibility into this; Eng surfaced no staging, no rollback, no D1 migration story, atomic-deploy assumption is false.
+
+### CODEX SAYS (eng — architecture challenge)
+
+> 1. [CRITICAL conf 10] `updated_at`-driven LWW is trust-on-first-write and trivially exploitable. Server must issue revisions; mutation IDs for idempotency.
+> 2. [HIGH conf 10] `version` column is dead weight as written. Make authoritative or remove.
+> 3. [HIGH conf 9] "Dexie schema mirrors Drizzle 1:1" is false in any meaningful integrity sense.
+> 4. [HIGH conf 9] `withTenant()` + ESLint is partial developer hygiene, not a tenant boundary. Ban raw D1 access.
+> 5. [MEDIUM conf 8] `rrule` and especially `ics` Workers compatibility unverified.
+> 6. [HIGH conf 9] Outbox underspecified — no `mutationId`, ack marker, retry state, compaction.
+> 7. [HIGH conf 8] `/sync/push` idempotency missing.
+> 8. [MEDIUM conf 9] Timezone storage as ISO offset is wrong for recurring schedules; use IANA TZ.
+> 9. [HIGH conf 10] Security gaps: no markdown sanitizer; HMAC token format/timing-safe-compare/claim-binding undefined; JWT verification described at brochure level.
+> 10. [MEDIUM conf 9] D1 indexes never specified; sync plan non-credible without them.
+> 11. [MEDIUM conf 8] `remainingQuantity` cached + ledger = two sources of truth.
+> 12. [HIGH conf 10] Deployment + migration not production-safe (no staging, atomic-deploy assumption false, no rollback).
+>
+> Single biggest hidden risk: sync model is fundamentally under-specified while treated as solved. Will appear to work in happy-path demos and silently corrupt household state under normal offline/retry behavior.
+
+### CLAUDE SUBAGENT (eng — independent review)
+
+> Verdict: 30% more infra than v1 demands; "this works because we said so" load-bearing claims will not survive contact with reality. Specific findings:
+>
+> A1 [HIGH 8] rrule + ics Workers compatibility unproven. A2 [CRITICAL 9] LWW updated_at is forgeable. A3 [MEDIUM 9] Cloudflare lock-in concentration. A4 [MEDIUM 7] `withTenant` is real if implemented as phantom-typed `ScopedDb<T>`, theater if regex-on-string. A5 [HIGH 8] Undo + cross-device LWW conflict silently squashes partner edits.
+>
+> E1-E7 edge cases: outbox unbounded; timezone mid-protocol; long-running schedule indexes; mid-reconstitution disconnect; idempotency missing.
+>
+> T1-T8 test gaps: branch coverage > line coverage; missing NaN/Infinity edge tests; ICS UID stability snapshots; Worker negative tests per route; ESLint rule's own fixtures.
+>
+> S1 [CRITICAL 10] Markdown XSS — no sanitizer committed. S2-S6 HMAC token format, JWT verification, `household_id` strip contract, JSON import strictness, SW cache poisoning.
+>
+> H1-H5 hidden complexity: `version` does nothing; "Dexie 1:1 Drizzle" is false; Dexie multi-store transaction abort gotchas; sync no-op + dead schema columns; D1 region pinning latency.
+>
+> D1-D4 deployment: wrangler deploy not atomic; no D1 blue/green; no staging; no rollback procedure.
+>
+> P1-P4 perf: N+1 inventory list forecast; Recharts bundle on mobile; dexie-react-hooks re-render storms; Worker D1 cold-start.
+
+### Section 1 — Architecture (ASCII dependency graph)
+
+```
+┌─────────────────────── PWA Client ────────────────────────────┐
+│                                                                │
+│  Pages (TodayPage, InventoryPage, CalculatorPage, ...)         │
+│      │                                                         │
+│      ▼                                                         │
+│  Features (vertical slices)                                    │
+│      │                                                         │
+│      ▼                                                         │
+│  Stores (Zustand UI state) + TanStack Query (derived)         │
+│      │                                                         │
+│      ▼                                                         │
+│  Repositories (HouseholdRepo, DoseLogRepo, ... )              │
+│      │                       │                                 │
+│      ▼                       ▼                                 │
+│  Dexie (IDB)            Outbox (IDB table)                    │
+│      ▲                       │                                 │
+│      │                       ▼                                 │
+│      │              Sync client (drainer + puller)            │
+│      │                       │                                 │
+│      └───────────────── domain/ (pure TS) ────────┐            │
+│                                                    │            │
+└──────────────────────────────────────────────────┬─┴────────────┘
+                                                   │ HTTPS + Access JWT
+                                                   ▼
+┌──────────────────────── Cloudflare ──────────────────────────┐
+│                                                               │
+│  Access (Zero Trust gateway — JWT issuance, JWKS endpoint)   │
+│      │                                                        │
+│      ▼                                                        │
+│  Worker (Hono)                                                │
+│   ├─ /sync/pull, /sync/push  ←─── tenant.ts (`withTenant`)   │
+│   ├─ /feed/user/:id.ics      ←─── HMAC token validation       │
+│   ├─ /feed/household/:id.ics                                  │
+│   └─ shared domain/ pure TS (rrule, ics, math, scheduling)   │
+│      │                                                        │
+│      ▼                                                        │
+│  D1 (SQLite at edge — household_id partitioned)              │
+│      │                                                        │
+│      ▼                                                        │
+│  R2 (daily wrangler-snapshot backup)  ◄── added by review    │
+└───────────────────────────────────────────────────────────────┘
+```
+
+**Coupling concerns:**
+- Domain layer ←→ both runtimes. Workers compatibility for `rrule` and `ics` is the single point of failure for "shared TS files" claim. **Pre-M1 spike required.**
+- Dexie `version` field ←→ unused. Dead weight. **Drop or wire OCC.**
+- `remainingQuantity` cached column ←→ ledger sum. Two sources of truth. **Derive from ledger; treat cache as projection.**
+
+### Section 2 — Code Quality (forward-looking)
+
+Greenfield — most findings concern the spec itself, not existing code:
+
+| Concern | Current spec | Fix |
+|---|---|---|
+| DRY: Zod schema in `domain/`, Dexie schema in `web/db/`, Drizzle schema in `worker/db/` | Three places to keep in sync | Codegen Dexie + Drizzle field lists from `domain/schemas` Zod via `drizzle-zod` and a Dexie codegen script. Add a CI parity assertion. |
+| Naming: `version` column | Implies CRDT/OCC, has neither | Either wire OCC or remove. |
+| Error handling: `notesMd` rendering | No sanitizer | Mandate `markdown-it` with HTML disabled OR `marked` + `DOMPurify` allowlist. Brand the output as `SanitizedHtml`. |
+| Over-engineering: `version` + `outbox` for users 1-4 | Already user-overridden | Accepted by user per premise gate; not contested here. |
+
+### Section 3 — Test Review (test diagram)
+
+```
+DOMAIN (pure TS — runs in browser AND Worker)             COVERAGE TARGET
+─────────────────────────────────────────────────         ───────────────
+[+] math/reconstitution.ts                                 ★★★ branches
+  ├── reconstitute(vialMass, diluentMl)
+  │   ├── happy path (3 examples from §7.7)               [TESTED]
+  │   ├── 0 mL diluent → MathError                        [TESTED]
+  │   └── negative inputs → Zod boundary                   [TESTED]
+[+] math/dose.ts                                           ★★★ branches
+  ├── doseToVolume(dose, concentration)
+  │   ├── happy path                                       [TESTED]
+  │   ├── division-by-zero                                 [TESTED]
+  │   ├── unit mismatch warning                            [GAP]
+  │   └── insulin units (U-100, U-40, U-500)               [GAP]
+[+] math/units.ts                                          ★★★ property
+  ├── round-trip identity (mcg↔mg↔g)                       [TESTED via fast-check]
+  ├── locale parsing (`"1,5"`)                             [GAP — Codex S]
+  └── NaN/Infinity/MIN_VALUE                                [GAP]
+[+] scheduling/expand.ts                                   ★★★ branches
+  ├── DST forward / DST back                                [GAP]
+  ├── Feb 29 / BYMONTHDAY=31                                [GAP]
+  ├── COUNT=0 / UNTIL past                                  [GAP]
+  ├── EXDATE past UNTIL                                     [GAP]
+  ├── Cycle on/off boundary                                 [GAP]
+  └── TZ change mid-protocol (NEW per Codex S8)             [GAP]
+[+] ical/generate.ts                                       ★★★ snapshot
+  ├── RFC-5545 validates                                    [GAP]
+  ├── line-folded at 75 octets                              [GAP]
+  ├── CRLF endings                                          [GAP]
+  ├── UID stability (DTSTAMP excluded from UID input)       [GAP — both voices]
+  ├── empty feed (0 occurrences)                            [GAP]
+  └── privacy mode SUMMARY/DESCRIPTION                      [GAP]
+
+PERSISTENCE (web/db/)
+─────────────────────
+[+] Repositories (fake-indexeddb)
+  ├── DoseLogRepo.create() atomicity                        [GAP — H3 transaction-abort gotcha]
+  ├── Undo reversal                                          [GAP]
+  ├── soft-delete filter on every query                     [GAP]
+  ├── outbox compaction (per-row supersede)                 [GAP]
+  └── schema-parity CI check                                 [GAP]
+
+WORKER (miniflare)
+──────────────────
+[+] Tenant isolation per route                             [GAPS — 7 negative cases]
+  ├── forge household_id in body                            [GAP]
+  ├── forge userId from another household                   [GAP]
+  ├── forge batchId from another household (FK ownership)   [GAP]
+  ├── forge JWT signature                                    [GAP]
+  ├── expired JWT                                            [GAP]
+  ├── valid JWT for A, payload for B                         [GAP]
+  └── SQL injection in `since=`                              [GAP]
+[+] Idempotency
+  └── same mutationId retried → applied once                [GAP]
+[+] Server-stamped updated_at                              [GAP]
+[+] OCC on version (compare-and-swap)                      [GAP]
+[+] HMAC token timing-safe + claim binding                 [GAP]
+[+] JWT verification (JWKS / iss / aud / exp / kid miss)   [GAP]
+
+ESLINT custom rule (no-unscoped-d1)
+────────────────────────────────────
+[+] positive + negative fixtures                           [GAP]
+
+E2E (Playwright)
+────────────────
+  See ~/.gstack/projects/peptide-tracker/alex-main-test-plan-20260429.md
+
+COVERAGE: 6/55+ surfaces explicitly tested in plan. Most gaps from review.
+QUALITY (★★★ branch+edge / ★★ happy / ★ smoke):
+  Domain math: ★★★ planned, several edge gaps
+  Worker: nearly 0 specified; review surfaced ~15 negative tests
+  Sync: 2 specified; review added 4 more (force-pull, idempotency, OCC, outbox compaction)
+GAPS: 30+ test cases added by review (see test plan artifact)
+```
+
+**Test plan artifact written to:** `~/.gstack/projects/peptide-tracker/alex-main-test-plan-20260429.md`
+
+### Section 4 — Performance
+
+| Concern | Severity | Specific fix |
+|---|---|---|
+| N+1 in inventory list (forecast remaining doses per row) | MEDIUM | Precompute `forecastedDepletionAt` on schedule mutation; store on `InventoryBatch`. |
+| Recharts bundle (~120 KB gzip) on mobile | MEDIUM | `React.lazy` the Insights page; defer Recharts to second paint. |
+| `dexie-react-hooks` re-render storms | MEDIUM | Narrow `useLiveQuery` to specific records; paginate; `React.memo` budget. |
+| Worker D1 cold start | LOW | ~50-150ms first query; not user-visible. |
+| Long-running schedule expansion | LOW | 730 rows for 2-year RRULE is cheap; needs `(household_id, user_id, scheduled_for)` index. |
+
+### Failure Modes Registry (with critical-gap flags)
+
+| CODEPATH | FAILURE MODE | RESCUED? | TEST? | USER SEES | LOGGED? | CRITICAL GAP? |
+|---|---|---|---|---|---|---|
+| `/sync/push` LWW | Forged future `updated_at` | **NO** | NO | n/a (silent data loss for partner) | NO | **YES — CRITICAL** |
+| `notesMd` rendering | XSS via `[click](javascript:...)` | **NO** | NO | RCE in auth context | NO | **YES — CRITICAL** |
+| Markdown rendering pipeline | HTML allowed by default | NO | NO | XSS surface | NO | **YES — CRITICAL** |
+| `/sync/push` retry after partial success | Duplicate `InventoryAdjustment` | **NO** (no idempotency) | NO | Inventory drifts silently | NO | **YES — CRITICAL** |
+| Outbox after 21 days offline | Unbounded growth | NO | NO | Sync stalls / slow drain | NO | **YES — HIGH** |
+| RRULE expansion in Tokyo for NY-created schedule | Wrong wall-clock fire time | NO | NO | Missed dose | NO | **YES — HIGH** |
+| Atomic Dexie multi-store transaction | Partial write on validation throw post-IDB | NO (rely on Dexie default) | NO | Inventory desync | NO | **YES — HIGH** |
+| HMAC token compare | Timing attack | Spec'd | NO | n/a | NO | HIGH |
+| Cloudflare Access JWT verification | JWKS not cached / `kid` miss | NO | NO | Worker 5xx storm on rotation | NO | **YES — HIGH** |
+| `wrangler deploy` Worker + Pages atomicity | Old client → new Worker, or vice versa | NO | n/a | Confusing breakage during deploy | NO | **YES — HIGH** |
+| D1 schema migration without blue/green | Old client reads dropped column | NO | NO | App crashes for users mid-rollout | NO | **YES — HIGH** |
+
+**Critical gaps total: 8.** All have specific fixes in the consensus findings above.
+
+### Phase 3 — Section 5 — NOT in scope
+
+- Switching from D1 to Postgres (deferred to v2 commercialization).
+- CRDT layer (revisit if LWW + OCC isn't enough).
+- Sharding by household across multiple D1 databases (v2 scale concern).
+- Native push notifications via Web Push (best-effort PWA only in v1).
+
+### Section 6 — Deployment Contract (added by review)
+
+The plan ends with raw `wrangler deploy`. Production-safe contract added by review:
+
+1. **Staging environment:** add `[env.staging]` to `wrangler.toml` with separate D1 binding (`peptide-tracker-staging`); preview Pages branch deploys to `*.preview.example.com`.
+2. **Deploy order:** **always Worker before Pages.** New Worker route is *additive* and backward-compatible (old client keeps working). Then deploy Pages — new client uses new Worker. Schedule old-Worker-route removal in a follow-up deploy after old clients have rotated (~14 days).
+3. **D1 migration policy: expand-then-contract.**
+   - Step 1: deploy a migration that *adds* columns/tables; Worker code reads-and-writes both old and new shapes.
+   - Step 2: deploy code that reads new only; old shape becomes write-only-for-back-compat.
+   - Step 3 (after 14 days): deploy migration that drops old shape.
+   - Tooling: `wrangler d1 migrations apply --env staging` runs in CI before promotion to production.
+4. **Rollback procedure:**
+   - Worker: `wrangler rollback` (reverts deployment but not D1 schema).
+   - Schema: restore from latest R2 snapshot via `wrangler d1 execute --file=snapshot.sql`.
+   - Document expected RTO: ≤ 15 minutes.
+5. **Daily backup:** Worker cron at 03:00 UTC runs `wrangler d1 export` → R2 bucket; retain 30 days. Documented in `wrangler.toml`.
+
+### Phase 3 — What already exists
+
+Greenfield. The "exists" axis is npm-package leverage. Plan picks reasonable Layer-1/Layer-2 packages; two (`rrule`, `ics`) need pre-M1 Workers compatibility verification.
+
+### Phase 3 — TODOS.md additions
+
+To be written as `TODOS.md` in repo root (proposed):
+- TODO M0+: Pre-M1 spike — verify `rrule` + `ics` in `wrangler dev` against an actual D1 binding. Replace with hand-rolled if either fails.
+- TODO M3: Server-stamped `updated_at`. OCC on `version`. Idempotency on `/sync/push` via mutation IDs. Cross-row FK ownership validation.
+- TODO M3: Define D1 indexes explicitly in `0001_init.sql`: `(household_id, updated_at)`, `(household_id, deleted_at)`, `(household_id, user_id, scheduled_for, status)`, `(household_id, scope, user_id)` for feeds, `(household_id, batch_id, created_at)` for ledger.
+- TODO M3: Schema parity CI assertion (codegen Dexie + Drizzle field lists from `domain/schemas`).
+- TODO M3: Cloudflare Access JWT verification with JWKS caching, `iss/aud/exp/kid-miss` handling.
+- TODO M3: HMAC ICS token claim binding (sign `{householdId, userId, scope, exp, jti}`), timing-safe compare.
+- TODO M3 + M9: ban raw D1 access; expose only `withTenant(c)`-derived `ScopedDb`.
+- TODO M2: Outbox model upgrade — `mutationId`, `entityType`, `entityId`, `retryCount`, `lastError`, `ackAt`. Compaction pass.
+- TODO M2: Atomic Dexie multi-store transaction safety — validate before transaction; explicit `tx.abort()`.
+- TODO M2 + M3: Markdown XSS — choose `markdown-it` (HTML off) OR `marked` + `DOMPurify`. Brand output as `SanitizedHtml`. Render only via `renderTrustedNotes()`.
+- TODO M0: Add `wrangler.toml [env.staging]` block.
+- TODO M0: Add daily D1 → R2 backup cron.
+- TODO M2 + M3: Reconcile `remainingQuantity` cache vs ledger — derive from ledger, cache only as projection.
+- TODO M7: Add IANA `timezone` to `ProtocolItem`. Expand from `(RRULE, tz, local time)` not from offset timestamps.
+- TODO M11: SRI on service worker registration; `updateViaCache: 'none'`.
+- TODO All: branch coverage ≥ 90% (not line coverage); add `NaN/Infinity/locale-comma` math edge tests.
+
+### Phase 3 — Completion Summary
+
+| Dimension | Result |
+|---|---|
+| Mode | FULL_REVIEW |
+| Scope challenge | Code-leverage map produced; complexity flagged (already user-accepted) |
+| Architecture diagram | Produced (ASCII above) |
+| Test diagram | Produced (above); 30+ gaps identified |
+| Test plan artifact | Written to `~/.gstack/projects/peptide-tracker/alex-main-test-plan-20260429.md` |
+| Failure modes | 11 rows; 8 CRITICAL gaps |
+| TODOs added | 16 items |
+| Outside voices | Codex eng ✓ + Claude subagent eng ✓ |
+| Consensus | 6/6 dimensions confirmed |
+| Critical gaps | 8 (LWW forgery, XSS, /sync idempotency, outbox unbounded, TZ in RRULE, transaction abort, JWKS rotation, deploy non-atomic) |
+
+---
+
+## Phase 3.5 — DX Review
+
+### Step 0 — DX Scope Assessment
+
+- **Product type:** consumer PWA + Cloudflare backend, with three distinct developer-journey audiences:
+  - **Journey A:** the AI builder (Claude Code) implementing §12 milestone prompts.
+  - **Journey B:** a returning maintainer (the user, 6 months later, or a future contributor).
+  - **Journey C:** a brand-new consumer signing up — re-classified as in-scope by the user's premise-gate clarification.
+- **Personas (inferred):**
+  - **Alex (the user):** experienced developer, fluent in Azure, picking up Cloudflare. Builds via Claude Code. Tolerates moderate setup.
+  - **Future-Alex / contributor:** has not seen the codebase in months. Wants to add a feature without re-reading the whole plan.
+  - **Consumer (Wife / signup user):** non-developer. Phone-first. Zero patience for setup friction.
+- **Initial DX completeness rating: 4/10.** Architecture is strong. Operational scaffolding is missing.
+
+### DX Dual Voices — Consensus Table
+
+```
+═══════════════════════════════════════════════════════════════════════════
+  Dimension                                Claude   Codex   Consensus
+  ──────────────────────────────────────── ──────── ─────── ──────────
+  1. Getting started < 5 min?               NO       NO     CONFIRMED
+  2. API/CLI naming guessable?              PARTIAL  NO     CONFIRMED-DEGRADED
+  3. Error messages actionable?             NO       NO     CONFIRMED
+  4. Docs findable & complete?              NO       NO     CONFIRMED
+  5. Upgrade path safe?                     NO       NO     CONFIRMED
+  6. Dev environment friction-free?         NO       NO     CONFIRMED
+═══════════════════════════════════════════════════════════════════════════
+```
+
+**6/6 dimensions agree.** Both voices flagged the same CRITICAL items independently. One major **USER CHALLENGE** propagates from the user's premise-gate clarification:
+
+- **CRITICAL: Cloudflare Access (gated allowlist) and consumer-personal-use signup are mutually exclusive product states.** Both voices flag this independently. Hard contradiction between the user's §1/§4 architecture (Access for the household) and §11 commercialization clarification (consumer signup). Cannot ship both as currently specified.
+- **CRITICAL: §12 milestone prompts miss operational prereqs** (wrangler login, d1 create, Access app create, secret put, .dev.vars).
+- **CRITICAL: README undefined** — neither voice can construct a maintainer's mental model from the plan.
+- **CRITICAL: Local dev broken under Cloudflare Access** — no dev-mode JWT bypass; Worker 401s every local request.
+- **HIGH (Codex unique): §12 prompts still encode pre-review-corrected assumptions.** LWW updated_at, toy outbox shape, untested rrule/ics — all corrected by the eng review but not propagated back to the prompts.
+- **HIGH: Schema drift across Zod + Dexie + Drizzle** without codegen or CI parity check.
+- **HIGH: Observability absent** — no structured logs, no client error reporting, no sync-health UI.
+- **HIGH: Education distribution controls missing** — no feature flag for hostile-reviewer builds.
+- **HIGH: Upgrade UX missing** — Stripe + tier caps mentioned, no actual paywall surface.
+
+### CODEX SAYS (DX — developer experience challenge)
+
+DX Scorecard: 2/4/2/3/4/3/2/1 = avg 2.6/10. Top 3 recs:
+1. Add a pre-M0 "bootstrap and local-dev contract" section. Make Cloudflare/D1/Access/secrets/staging concrete and reproducible.
+2. Rewrite M1-M4/M9 to absorb the engineering review's corrections instead of leaving invalid prompts in place.
+3. Resolve the auth/product contradiction now: closed household app with Access, OR consumer signup product. Not both.
+
+Single biggest DX risk: the fake local-dev story around Cloudflare Access. Without it, every journey degrades — Claude cannot implement reliably, maintainers cannot debug regressions, consumer-signup work cannot even be prototyped credibly.
+
+### CLAUDE SUBAGENT (DX — independent review)
+
+DX Scorecard: 5/6/3/4/4/6/3/2 = avg 4.1/10. Top 3 recs:
+1. Write an "M0.5 — operator setup" prompt + a real README skeleton with 8 named sections.
+2. Resolve the consumer-auth contradiction now, not at v2 — ship Clerk alongside Access in v1, OR rewrite §1/§11 to say "v1 is household-beta only."
+3. Add observability + sync-health UI as a first-class feature, not an afterthought.
+
+Single biggest DX risk: the plan optimizes for *writing* code and ignores *running, debugging, onboarding, and evolving* it.
+
+### Developer Journey Map (6-stage trace)
+
+| Stage | Developer does | Friction points | Status |
+|---|---|---|---|
+| 1. Discover | Read PLAN.md, decide to build | None — plan is well-written | ✓ Strong |
+| 2. Install | `pnpm install`; configure wrangler | wrangler login (interactive); D1 create; Access app create; HMAC secret; pnpm dev concurrent runner not specified; Tailwind v4 churn | ✗ ~35 min un-spec'd friction |
+| 3. Hello World (M0) | Boot the app shell + Worker | `wrangler dev` 401s without Access JWT in dev; no dev bypass; local D1 needs migrations | ✗ Boot fails; Claude derives wrong fix |
+| 4. Real Usage (M1-M9) | Implement milestones one at a time | Each new session must read prior milestones' code (not stated); Codex eng-review corrections never made it back into the prompts; tests vague enough to skip | ✗ Plan ships with stale prompts |
+| 5. Debug | "Sync isn't working — why?" | No structured logs, no sync-health UI, no client error reporter, no debug breadcrumbs | ✗ Undiagnosable failure modes |
+| 6. Upgrade | Add a column / migrate D1 | Three schemas to update (Zod + Dexie + Drizzle); no codegen; no parity CI; no documented `pnpm migrate` script | ✗ Drift inevitable |
+
+### TTHW — Time To Hello World
+
+| Journey | Pre-review estimate | Post-review estimate | Tier |
+|---|---|---|---|
+| A — AI builder, M0 boot | "fast — Claude does it" | ~60 min (35 min friction) | Needs Work |
+| A — full M0→M8 chain to first dose logged | "11 weekends" | ~12-18 hours of CC session time across 9 prompts × 1-2 follow-ups each | Competitive (with fixes) |
+| B — Returning maintainer, working local dev | unspecified | 1.5-3 hours | Red Flag |
+| C — Brand-new consumer | unspecified | **BLOCKED** (Access allowlist incompatible with self-service signup) | Impossible |
+
+**Target after fixes:** A=15 min, B=20 min, C=conditional on auth resolution.
+
+### Developer empathy narrative (first-person, future-Alex 6 months later)
+
+> I open the repo, run `pnpm install`. Then `pnpm dev`. The web hits the Worker, which 401s. I check the README — it tells me about the no-medical-claims rule. Cool. It does not tell me how to log into Cloudflare locally. I `grep` for "401" — no debug helper. I check `wrangler.toml` — yep, Access is on. I cannot find a `WRANGLER_DEV_FAKE_USER` env var because it does not exist. I open Cloudflare Dashboard, the Access app does not have my dev URL whitelisted. I add it. Now `wrangler dev` returns OK but the JWT signature fails because dev is using a different team. I'm 45 minutes in. I have not read a single dose log.
+
+### DX Scorecard (consensus, after rounding both voices)
+
+| # | Dimension | Score | Justification |
+|---|---|---:|---|
+| 1 | Getting started (TTHW) | **3/10** | Both voices flag CRITICAL friction in operational prereqs and Access dev bypass. Journey C is blocked. |
+| 2 | API/CLI design (Worker routes, wrangler, §12 DSL) | **5/10** | Worker route shape is clean; §12 prompt DSL is durable but stale (still encodes pre-eng-review assumptions per Codex). |
+| 3 | Error messages & debugging | **2/10** | No structured logs, no sync-health UI, no client error reporter. Worker 401 from dev is the worst error path in the plan. |
+| 4 | Documentation & learning | **3/10** | README undefined. Eight named sections required. ESLint custom rule undocumented. |
+| 5 | Upgrade & migration path | **4/10** | Phase 3 added expand-then-contract for D1; not propagated to milestones. Day-to-day "add a column" workflow unspecified. |
+| 6 | Developer environment & tooling | **4/10** | Stack choice sound; TS strictness, Tailwind v4 PostCSS, concurrently/turbo not specified. |
+| 7 | Community & ecosystem | **3/10** | No CONTRIBUTING.md, no LICENSE, no education-content contribution guide. |
+| 8 | DX measurement & feedback loops | **2/10** | No telemetry, no feature flags, no sync-health dashboard, no error reporter. |
+| **Avg** | | **3.3/10** | Architecture-strong, ops-weak. |
+
+### DX Implementation Checklist (apply before / during M0-M1)
+
+- [ ] Pre-M0 "operator bootstrap" prompt: copy-paste commands for `wrangler login`, `wrangler d1 create`, `wrangler secret put`, Access app provisioning. Values copied into `wrangler.toml` placeholders.
+- [ ] `SETUP.md` documenting all interactive prereqs.
+- [ ] Dev-mode auth bypass: `AUTH_MODE=dev` env var; Worker injects synthetic principal in `wrangler dev`; logs `"DEV AUTH BYPASS ACTIVE — do not deploy"`.
+- [ ] `pnpm dev:as=alex@household` canonical local-dev command.
+- [ ] README skeleton (Quickstart / Architecture / Local dev / Testing / Deploying / Migrations / Education content / Troubleshooting) produced by M0.
+- [ ] Concurrently or Turbo for `pnpm dev` (web + wrangler dev together).
+- [ ] Strict TypeScript settings (`"strict": true`, `"noUncheckedIndexedAccess": true`) in `tsconfig.base.json`.
+- [ ] Zod-as-source-of-truth + Dexie/Drizzle codegen + `pnpm check:schemas` parity CI.
+- [ ] Maintainer recipe `docs/schema-changes.md`: edit Zod → run codegen → review diff → write migration → apply local → apply staging → apply prod.
+- [ ] Structured Worker logging contract: `{requestId, householdId, route, latencyMs, status}`.
+- [ ] Client error boundary that POSTs to `/diag/log` with breadcrumbs.
+- [ ] Settings → Sync Health page: last pull / push / outbox depth / failures.
+- [ ] Feature-flag matrix by distribution channel: web / private beta / app-store build / billing-enabled.
+- [ ] `FEATURE_EDUCATION` build flag — hostile-reviewer build strips Education entirely.
+- [ ] Upgrade prompt surface specified: when free-tier limit hit (add product, invite user, enable hosted feed).
+- [ ] CONTRIBUTING.md with `pnpm check`, `pnpm test`, `pnpm test:e2e`, `pnpm migrate`.
+- [ ] LICENSE decision (recommend MIT for personal use; reconsider on commercialization).
+- [ ] **Re-issue M1, M2, M3, M4, M9 prompts** to incorporate eng-review corrections (server-stamped updated_at, OCC, mutationIds, outbox compaction, IANA TZ, JWT verification spec, HMAC claim binding, schema parity, indexes).
+
+### Phase 3.5 — NOT in scope
+
+- DX measurement at scale (N>1000 users; consumer support workflows).
+- Public open-source contributor on-ramp (defer to actual commercialization).
+- Translated documentation (English-only).
+- Video onboarding / animated walkthroughs.
+
+### Phase 3.5 — Completion Summary
+
+| Dimension | Result |
+|---|---|
+| Mode | DX_POLISH |
+| Initial score | 4.1/10 (avg of voices, lowest 2.6 for sync observability) |
+| Post-review target | 8/10 (with checklist applied) |
+| Product type | Consumer PWA + Cloudflare Worker backend; AI-builder DSL |
+| TTHW current | A=60min / B=1.5-3h / C=blocked |
+| TTHW target | A=15min / B=20min / C=conditional on auth resolution |
+| Outside voices | Codex DX ✓ + Claude subagent DX ✓ |
+| Consensus | 6/6 dimensions confirmed |
+| Critical findings | 4 (auth contradiction, prereqs, README, dev bypass); 1 USER CHALLENGE for gate |
+
+---
+
+## Decision Audit Trail
+
+| # | Phase | Decision | Class | Principle | Rationale |
+|---|---|---|---|---|---|
+| 1 | CEO | Premise challenge: P1 (sync need), P2 (SaaS-ready free), P3 (peptide commercialization viable) — all rejected by both voices | Mechanical | P1 completeness | 6/6 consensus across two independent voices |
+| 2 | CEO | Mode change SELECTIVE_EXPANSION → SCOPE_REDUCTION recommended | User Challenge | n/a | User overrode the consensus and kept SELECTIVE_EXPANSION; recorded |
+| 3 | CEO | Add Education / Information module (NEW user requirement) | User decision | n/a | User clarified at premise gate; structure spec'd in §3.10 delta |
+| 4 | CEO | Strike §11 commercialization or rewrite as consumer-only | User decision | n/a | User chose consumer-personal-use signup, no clinical, no FDA |
+| 5 | Design | Education in primary nav | User Challenge | n/a | Both voices flag CRITICAL — App Store risk. Recommend detail-tab only |
+| 6 | Design | Visual identity (lab-notebook / utility-lab vs default shadcn) | Taste | P5 explicit-over-clever | Both voices recommend anti-default; pick one |
+| 7 | Design | Bottom-nav center-action vs 4-tab+More | Taste | P5 explicit | Both voices want intentional structure; choose one shape |
+| 8 | Design | Disclaimer pattern (footer + first-time modal) | Mechanical | P1 completeness | Both voices converged on same pattern |
+| 9 | Design | Citation rendering (footnote markers + end list with DOI) | Mechanical | P5 explicit | Single defensible answer |
+| 10 | Design | Education editor (structured + markdown only, no rich text) | Mechanical | P5 explicit | Single defensible answer |
+| 11 | Design | Typography scale (13/15/17/22/28 + mono-14 numerics) | Mechanical | P1 completeness | Locked in §8.0 of plan |
+| 12 | Design | Spacing scale (4/8/12/16/24/32) | Mechanical | P1 | Locked |
+| 13 | Design | Border-radius scale (0/4/12) | Mechanical | P1 | Locked |
+| 14 | Design | Shadow scale (none) | Mechanical | P5 | Locked |
+| 15 | Design | Motion language (120ms / 240ms, no spring) | Mechanical | P1 | Locked |
+| 16 | Design | Density (comfortable mobile, compact desktop) | Mechanical | P1 | Locked |
+| 17 | Design | Calendar URL share UX (provider-specific buttons + QR + Copy) | Mechanical | P1 | Locked. Default privacy = `generic` |
+| 18 | Design | Body diagram (parallel list mode + SVG; both keyboard-navigable) | Mechanical | P1 a11y | Locked |
+| 19 | Design | Decimal locale parser (accept `,` and `.`) | Mechanical | P1 | Locked + tested |
+| 20 | Design | Cloudflare Access onboarding (value-before-consent + Open in Safari hint) | Mechanical | P1 | Locked |
+| 21 | Design | Desktop layout (≥1024 left rail, ≥1280 collapsed rail, 960/1280 max widths) | Mechanical | P1 | Locked |
+| 22 | Eng | Server-stamped `updated_at` + OCC on `version` (replace LWW) | User Challenge | n/a | Both voices CRITICAL/CONF=10. Forgery exploit. Defaults to applied. |
+| 23 | Eng | Idempotency on `/sync/push` via mutationIds | Mechanical | P1 | Both voices HIGH/CONF=8-9. No countervailing argument. |
+| 24 | Eng | Outbox upgrade (mutationId, retryCount, ackAt, compaction) | Mechanical | P1 | Both voices HIGH. Single answer. |
+| 25 | Eng | IANA timezone per ProtocolItem; expand from `(RRULE, tz, local)` | Mechanical | P1 | Both voices flagged. |
+| 26 | Eng | DOMPurify / markdown-it sanitizer for `notesMd` (branded `SanitizedHtml`) | Mechanical | P1 security | Both voices CRITICAL. |
+| 27 | Eng | HMAC token (timing-safe + claim binding `{householdId, userId, scope, exp, jti}`) | Mechanical | P1 | Both voices HIGH. |
+| 28 | Eng | JWT verification spec (JWKS / iss / aud / exp / kid-miss) | Mechanical | P1 | Both voices HIGH. |
+| 29 | Eng | D1 indexes specified explicitly | Mechanical | P1 | Both voices MEDIUM/HIGH. |
+| 30 | Eng | Schema parity CI (Zod source of truth; Dexie + Drizzle codegen) | Mechanical | P4 DRY | Both voices HIGH. |
+| 31 | Eng | Phantom-typed `ScopedDb<T>` (ban raw D1) | Mechanical | P5 explicit | Both voices HIGH. |
+| 32 | Eng | Pre-M1 spike: verify `rrule` and `ics` in Workers runtime | Mechanical | P6 bias-to-action | Both voices flagged compatibility risk. |
+| 33 | Eng | `[env.staging]` + R2 daily backup + expand-contract migrations + rollback | Mechanical | P1 | Both voices CRITICAL/HIGH. |
+| 34 | Eng | Deploy order: Worker first (additive), Pages second | Mechanical | P5 | Both voices flagged atomicity issue. |
+| 35 | Eng | `remainingQuantity` derived from ledger; cache as projection only | Mechanical | P5 | Codex MEDIUM, subagent implicit. |
+| 36 | DX | Pre-M0 operator bootstrap prompt + `SETUP.md` | Mechanical | P1 | Both voices CRITICAL. |
+| 37 | DX | Dev-mode JWT bypass (`AUTH_MODE=dev` synthetic principal) | Mechanical | P1 | Both voices CRITICAL. |
+| 38 | DX | README skeleton with 8 named sections | Mechanical | P1 | Both voices CRITICAL. |
+| 39 | DX | Re-issue M1, M2, M3, M4, M9 prompts to absorb eng-review corrections | Mechanical | P1 | Codex unique HIGH; subagent implicit via F4. |
+| 40 | DX | Cloudflare Access vs consumer signup contradiction | User Challenge | n/a | Both voices CRITICAL. Mutually exclusive product states. |
+| 41 | DX | Observability (structured Worker logs + client error boundary + Sync Health UI) | Mechanical | P1 | Both voices HIGH. |
+| 42 | DX | `FEATURE_EDUCATION` build flag (hostile-reviewer build) | Mechanical | P1 | Both voices HIGH; reduces App Store / Stripe risk. |
+| 43 | DX | Free-tier upgrade prompt surfaces (add-product limit, invite-user limit, hosted-feed gate) | Mechanical | P1 | Both voices flagged; single answer. |
+| 44 | DX | LICENSE = MIT (recommend, reconsider at commercialization) | Auto | P6 | No countervailing argument. |
+| 45 | DX | CONTRIBUTING.md scaffolded by M0 | Mechanical | P1 | Both voices flagged. |
+
+**Total decisions: 45.** **2 User Challenges, 2 Taste Decisions, 41 auto-decided.**
+
+---
+
+## Phase 4 — Final Approval Gate (resolved 2026-04-29)
+
+User reviewed the dual-voice consensus, the user challenges, and the taste decisions. Outcomes:
+
+### User Challenges — resolved
+
+**UC1 — Education placement: ACCEPTED.** Education becomes a `Reference` tab on `InventoryItem` detail, plus a secondary entry under a future "More" menu. NOT in primary bottom-nav.
+
+**UC2 — Auth resolution: ACCEPTED option (a).** **v1 ships household-beta only with Cloudflare Access.** Consumer-personal-use signup becomes **v1.5** with Clerk or Auth.js. Apply these edits to the plan body during implementation:
+- Rewrite §1 to say "v1: closed household beta. Consumer signup is v1.5."
+- Rewrite §2 v1 — In Scope to remove "future SaaS commercialization framing" from v1; move it to v1.5.
+- Rewrite §11 to be a v1.5+ roadmap (Clerk/Auth.js, Stripe, free-tier limits, upgrade UX) — explicitly *not* a v1 deliverable.
+- Update §15 decisions table accordingly.
+
+### Taste Decisions — resolved
+
+**TD1 — Visual identity: LAB-NOTEBOOK.** Serif display + monospace numerics + paper-toned backgrounds, no card shadows. Specify in §8.0:
+- Display family: a humanist serif (e.g., Source Serif Pro / Lora / Newsreader). Body family: a clean sans (Inter or system).
+- Numeric family: a mono (JetBrains Mono / IBM Plex Mono) for all dose/volume/concentration figures.
+- Background tokens: warm-paper light (`#F8F4EC` light-mode body, `#FFFFFF` cards… no, ditch cards entirely; use ruled separators only). Dark mode: deep-ink background (`#1C1A17`) + parchment text.
+- One warning hue (amber `#B26A00`), one action hue (deep ink `#1C1A17` reversed on actions), one success hue (forest `#2E5E3E`).
+- Anti-defaults: no `shadow-sm`, no `bg-card border`, no Lucide icons in colored circles, no Recharts default tooltips. Recharts re-themed to match (typography-led axes, no legend chips).
+
+**TD2 — Bottom-nav center action: CENTER-DOCKED LOG BUTTON.** Primary nav becomes:
+```
+[ Today ] [ Inventory ]   [ + LOG + ]   [ Protocols ] [ More ]
+```
+- LOG is a 64pt-tall pill that floats up 12pt above the bar baseline; tap → context-aware sheet:
+  - If active user has a pending schedule today → pre-fills it; one confirm tap.
+  - If not → manual log flow (user → product → batch → dose → method → site).
+- Long-press LOG → quick switcher between household members.
+- "More" contains Insights, Calculator, Settings, Education library, plus future surfaces.
+
+### Gate verdict: APPROVED
+
+Plan is ready for implementation. Final plan state:
+- Architecture: Cloudflare end-to-end (Pages + Workers + D1 + Access) — household-beta only in v1.
+- Visual identity: lab-notebook.
+- Education: detail-tab only.
+- 41 mechanical decisions auto-resolved; 16 TODOs added; 18 DX checklist items.
+- Pre-M0 operator bootstrap required before M0 starts.
+- M1, M2, M3, M4, M9 prompts must be re-issued to incorporate eng-review corrections (server-stamped timestamps, OCC, mutationId, outbox upgrade, IANA TZ, sanitizer, JWT spec, HMAC claims, indexes, schema parity).
+- Test plan artifact written to `~/.gstack/projects/peptide-tracker/alex-main-test-plan-20260429.md`.
+- Restore point at `~/.gstack/projects/peptide-tracker/main-autoplan-restore-20260428-165519.md`.
+
+
+
