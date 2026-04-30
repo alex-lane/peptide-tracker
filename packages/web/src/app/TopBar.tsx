@@ -1,9 +1,24 @@
 import { Link } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { getDb } from '@/db';
 import { useSyncStatus } from '@/sync/useSyncStatus';
+import { useActive } from '@/app/useActive';
 import { cn } from '@/lib/cn';
 
 export function TopBar() {
   const status = useSyncStatus();
+  const active = useActive();
+  const db = getDb();
+
+  const household = useLiveQuery(
+    async () => (active.householdId ? await db.households.get(active.householdId) : undefined),
+    [active.householdId],
+  );
+  const user = useLiveQuery(
+    async () => (active.userId ? await db.userProfiles.get(active.userId) : undefined),
+    [active.userId],
+  );
+
   const dotLabel = describeStatus(status);
 
   return (
@@ -11,7 +26,7 @@ export function TopBar() {
       <div className="mx-auto flex w-full max-w-screen-md items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="font-display text-base">Peptide Tracker</span>
-          <span className="text-xs text-ink-100">household</span>
+          <span className="text-xs text-ink-100">{household?.name ?? 'household'}</span>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -29,13 +44,20 @@ export function TopBar() {
             />
             {status.outboxDepth > 0 && <span className="num">{status.outboxDepth}</span>}
           </Link>
-          <button
-            type="button"
-            aria-label="Switch user"
-            className="rounded-full bg-paper-200 px-3 py-1.5 text-xs text-ink-200 transition-colors duration-120 hover:bg-paper-300"
-          >
-            Alex
-          </button>
+          {user && (
+            <button
+              type="button"
+              aria-label="Switch user"
+              className="flex items-center gap-1.5 rounded-full bg-paper-200 px-3 py-1.5 text-xs text-ink-200 transition-colors duration-120 hover:bg-paper-300"
+            >
+              <span
+                aria-hidden
+                className="inline-block h-2 w-2 rounded-full"
+                style={{ backgroundColor: user.color }}
+              />
+              {user.displayName}
+            </button>
+          )}
         </div>
       </div>
     </header>
