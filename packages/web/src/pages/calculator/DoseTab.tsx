@@ -35,6 +35,9 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
   const [manualConcentration, setManualConcentration] = useState('');
   const [manualConcUnit, setManualConcUnit] = useState<'mg' | 'mcg'>('mg');
 
+  // Bumped on Record-max so the previous-max useMemo re-reads localStorage.
+  const [maxRecordTick, setMaxRecordTick] = useState(0);
+
   // Inferred concentration for the currently-selected product. We try in
   // priority order:
   //   1. Most-recent reconstituted batch (`batch.reconstitution.resultingConcentration`)
@@ -57,6 +60,11 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
       const bestBatch = batchCandidates[0];
       if (bestBatch?.reconstitution) {
         const c = bestBatch.reconstitution.resultingConcentration;
+        if (c.unit === 'IU') {
+          // IU↔mass is product-specific and intentionally not auto-converted.
+          if (!cancelled) setInferred(null);
+          return;
+        }
         const mcgPerMlValue =
           c.unit === 'mg' ? c.value * 1000 : c.unit === 'g' ? c.value * 1_000_000 : c.value;
         if (!cancelled) {
@@ -73,10 +81,15 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
         if (!cancelled) setInferred(null);
         return;
       }
+      if (preset.vialMassUnit === 'IU') {
+        // IU↔mass is product-specific and intentionally not auto-converted.
+        if (!cancelled) setInferred(null);
+        return;
+      }
       try {
         const out = reconstitute({
           vialMass: parseDecimalInput(preset.vialMass),
-          vialMassUnit: preset.vialMassUnit === 'IU' ? 'mg' : preset.vialMassUnit,
+          vialMassUnit: preset.vialMassUnit,
           diluentVolumeMl: parseDecimalInput(preset.diluentMl),
           diluentType: preset.diluentType,
         });
@@ -165,7 +178,7 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
     } catch {
       return null;
     }
-  }, [selectedItemId]);
+  }, [selectedItemId, maxRecordTick]);
 
   const sanityWarning = useMemo(() => {
     if (!result?.ok || !selectedItemId || previousMaxMcg === null) return null;
@@ -181,6 +194,7 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
     if (result.data.doseMcg > prev) {
       try {
         localStorage.setItem(KEY_DOSE_MAX + selectedItemId, String(result.data.doseMcg));
+        setMaxRecordTick((t) => t + 1);
       } catch {
         // ignore
       }
