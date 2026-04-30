@@ -20,7 +20,17 @@ import type {
 } from './types.js';
 
 export const DB_NAME = 'peptide-tracker';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
+
+/**
+ * Singleton key/value rows for sync cursor + config. Dexie has no first-class
+ * key/value store; a tiny `meta` table is the idiomatic shape.
+ */
+export interface MetaRow {
+  key: string;
+  value: unknown;
+  updatedAt: string;
+}
 
 /**
  * Compound indexes in Dexie use comma-separated strings inside square
@@ -45,11 +55,12 @@ export class PeptideDb extends Dexie {
   calendarExportHistory!: EntityTable<CalendarExportHistory, 'id'>;
   educationContent!: EntityTable<EducationContent, 'id'>;
   outbox!: EntityTable<OutboxRow, 'id'>;
+  meta!: EntityTable<MetaRow, 'key'>;
 
   constructor(name: string = DB_NAME) {
     super(name);
 
-    this.version(DB_VERSION).stores({
+    this.version(1).stores({
       households: 'id, [householdId+updatedAt], deletedAt',
       userProfiles: 'id, [householdId+updatedAt], deletedAt',
       inventoryItems: 'id, householdId, [householdId+updatedAt], deletedAt, form',
@@ -72,6 +83,11 @@ export class PeptideDb extends Dexie {
       calendarExportHistory: 'id, householdId, exportedAt, [householdId+exportedAt]',
       educationContent: 'id, &slug, householdId, [householdId+slug]',
       outbox: '++id, mutationId, entity, createdAt, ackedAt',
+    });
+
+    // v2 — adds the sync cursor + config singleton table.
+    this.version(2).stores({
+      meta: 'key',
     });
   }
 }

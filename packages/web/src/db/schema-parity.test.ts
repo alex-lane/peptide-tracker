@@ -42,11 +42,12 @@ describe('schema parity (Zod ↔ Dexie)', () => {
     db.close();
   });
 
-  it('Dexie has no extra household-scoped tables beyond the entity set + outbox', async () => {
+  it('Dexie has no extra household-scoped tables beyond the entity set + outbox + meta', async () => {
     const db = makeTestDb();
     await db.open();
     const tableNames = db.tables.map((t) => t.name);
-    const expected = new Set([...Object.values(PLURAL_MAP), 'outbox']);
+    // outbox: queued mutations (M2). meta: sync cursor + config (M4).
+    const expected = new Set([...Object.values(PLURAL_MAP), 'outbox', 'meta']);
     for (const name of tableNames) {
       expect(expected, `Unexpected table ${name}`).toContain(name);
     }
