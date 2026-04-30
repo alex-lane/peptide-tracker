@@ -33,9 +33,11 @@ describe('Worker scaffold', () => {
     expect(body.principal?.email).toBe('wife@household.local');
   });
 
-  it('does not inject a principal when AUTH_MODE !== dev', async () => {
+  it('returns 500 AUTH_MISCONFIGURED when AUTH_MODE=prod but config missing', async () => {
+    // No ACCESS_TEAM_DOMAIN / ACCESS_AUDIENCE / DB in env.
     const res = await app.request('/whoami', {}, { ...env, AUTH_MODE: 'prod' });
-    const body = (await res.json()) as { principal: unknown };
-    expect(body.principal).toBeNull();
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('AUTH_MISCONFIGURED');
   });
 });

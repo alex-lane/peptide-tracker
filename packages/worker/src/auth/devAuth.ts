@@ -1,17 +1,22 @@
 import type { Context, Next } from 'hono';
 import type { Env } from '../index.js';
+import { resolvePrincipal, verifyAccessJwt } from './access.js';
+import { TenantError, type Principal } from '../tenant.js';
 
 let warned = false;
 
 /**
- * Dev-mode auth bypass.
- * - When AUTH_MODE === 'dev', injects a synthetic principal so authenticated
- *   routes work under `wrangler dev` without a real Cloudflare Access JWT.
- * - Logs a one-time warning per Worker instance.
- * - In any other AUTH_MODE this middleware does nothing; real JWT verification
- *   is added in M3 alongside Cloudflare Access JWKS handling.
+ * Auth middleware. Two modes:
+ *
+ * - AUTH_MODE=dev: skip JWT verification entirely. Inject a synthetic
+ *   principal so `wrangler dev` can exercise authenticated flows. Logs a
+ *   one-time warning. Reads `x-dev-as` header to switch users.
+ *
+ * - AUTH_MODE=prod: verify the Cloudflare Access JWT (signature + iss +
+ *   aud + exp), then resolve email → principal via access_users table.
+ *   On any failure, returns 401/403 with a structured TenantError code.
  */
-export async function devAuth(c: Context<{ Bindings: Env }>, next: Next) {
+export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
   if (c.env.AUTH_MODE === 'dev') {
     if (!warned) {
       console.warn('DEV AUTH BYPASS ACTIVE — do not deploy. Set AUTH_MODE=prod for staging/prod.');
@@ -19,11 +24,38 @@ export async function devAuth(c: Context<{ Bindings: Env }>, next: Next) {
     }
     const headerOverride = c.req.header('x-dev-as');
     const email = headerOverride ?? 'alex@household.local';
-    c.set('principal' as never, {
+    const principal: Principal = {
       email,
       userId: `dev-user-${email}`,
-      householdId: 'dev-household',
+      householdId: c.req.header('x-dev-household') ?? 'dev-household',
+    };
+    c.set('principal' as never, principal);
+    await next();
+    return;
+  }
+
+  // Production path.
+  if (!c.env.ACCESS_TEAM_DOMAIN || !c.env.ACCESS_AUDIENCE) {
+    return c.json(
+      { error: 'AUTH_MISCONFIGURED', message: 'Access team domain + audience required' },
+      500,
+    );
+  }
+  if (!c.env.DB) {
+    return c.json({ error: 'AUTH_MISCONFIGURED', message: 'D1 binding missing' }, 500);
+  }
+  try {
+    const { email } = await verifyAccessJwt(c.req.raw, {
+      teamDomain: c.env.ACCESS_TEAM_DOMAIN,
+      audience: c.env.ACCESS_AUDIENCE,
     });
+    const principal = await resolvePrincipal(c.env.DB, email);
+    c.set('principal' as never, principal);
+  } catch (err) {
+    if (err instanceof TenantError) {
+      return c.json({ error: err.code, message: err.message }, err.status as 401 | 403 | 500);
+    }
+    throw err;
   }
   await next();
 }

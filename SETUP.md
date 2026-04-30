@@ -35,8 +35,8 @@ Opens a browser, authorizes Wrangler, drops a token in `~/.wrangler/`.
 
 ## 4. Create the D1 database (run **once per environment**)
 
-This step is **deferred to M3** when D1 actually gets used. When you reach M3,
-run these commands and paste the printed `database_id` into `packages/worker/wrangler.toml`:
+Required for M3+. Run these commands and paste the printed `database_id`
+into `packages/worker/wrangler.toml`:
 
 ```bash
 # Development
@@ -59,18 +59,48 @@ database_id = "abcd1234-..."
 ```
 
 Paste the `database_id` line under the matching `[env.*]` block in `wrangler.toml`.
+Then apply the schema migration:
 
-## 5. Cloudflare Access (deferred to M3)
+```bash
+# Local (Miniflare)
+pnpm --filter @peptide/worker exec wrangler d1 execute peptide-tracker-dev --local --file=migrations/0001_init.sql
 
-When you reach M3, set up an Access application:
+# Staging
+pnpm --filter @peptide/worker exec wrangler d1 execute peptide-tracker-staging --env staging --remote --file=migrations/0001_init.sql
+
+# Production
+pnpm --filter @peptide/worker exec wrangler d1 execute peptide-tracker-prod --env production --remote --file=migrations/0001_init.sql
+```
+
+After the schema is in place, populate the `access_users` table for each
+household member who should be allowed in:
+
+```bash
+pnpm --filter @peptide/worker exec wrangler d1 execute peptide-tracker-dev --local \
+  --command="INSERT INTO access_users (email, user_id, household_id, created_at) \
+  VALUES ('alex@example.com', 'YOUR_USER_UUID', 'YOUR_HOUSEHOLD_UUID', '$(date -u +%Y-%m-%dT%H:%M:%SZ)')"
+```
+
+## 5. Cloudflare Access (required for AUTH_MODE=prod)
+
+For staging/production, set up an Access application:
 
 1. Cloudflare dashboard → Zero Trust → Access → Applications → Add an application.
 2. Type: Self-hosted. Application domain: your worker route (e.g. `api.peptide-tracker.example.com`).
 3. Identity: email OTP and/or Google.
 4. Policy: allowlist your household member emails.
-5. Note the **AUD tag** and the **team domain**. You'll need them for JWT verification (M3).
+5. Note the **AUD tag** and the **team domain**. Set them as Worker vars in
+   `packages/worker/wrangler.toml`:
 
-Until then, M0 ships with `AUTH_MODE=dev` and a synthetic principal — see `README.md`.
+   ```toml
+   [env.staging.vars]
+   ACCESS_TEAM_DOMAIN = "yourteam.cloudflareaccess.com"
+   ACCESS_AUDIENCE    = "<your-AUD-tag>"
+   ```
+
+For local dev, `AUTH_MODE=dev` is the default and a synthetic principal is
+injected automatically. Override the dev user via the `x-dev-as` and
+`x-dev-household` headers when calling the Worker.
 
 ## 6. Worker secrets (deferred to M9)
 
