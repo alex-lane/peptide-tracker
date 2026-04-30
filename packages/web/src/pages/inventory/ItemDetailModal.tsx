@@ -43,6 +43,18 @@ export function ItemDetailModal({
     await repo.upsert({ ...batch, status: to, updatedAt: nowIso() });
   }
 
+  async function deleteBatch(batch: InventoryBatch) {
+    const desc = batch.lotNumber
+      ? `lot ${batch.lotNumber}`
+      : `${batch.initialQuantity} ${batch.initialQuantityUnit}`;
+    const ok = window.confirm(
+      `Delete this batch (${desc})? This is a soft delete — the row is hidden but can be restored from a JSON export. Use this when you need to wipe a fat-finger entry.`,
+    );
+    if (!ok) return;
+    const repo = new InventoryBatchRepo(getDb());
+    await repo.softDelete(batch.id);
+  }
+
   async function deleteItem() {
     const ok = window.confirm(
       `Delete "${item.name}"? This soft-deletes the product template; existing batches stay until you delete them individually.`,
@@ -179,6 +191,11 @@ export function ItemDetailModal({
                             setPane('edit-batch');
                           }}
                         />
+                        <BatchAction
+                          label="Delete"
+                          tone="danger"
+                          onClick={() => void deleteBatch(b)}
+                        />
                       </div>
                     </li>
                   ))}
@@ -261,12 +278,24 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function BatchAction({ label, onClick }: { label: string; onClick: () => void }) {
+function BatchAction({
+  label,
+  onClick,
+  tone = 'neutral',
+}: {
+  label: string;
+  onClick: () => void;
+  tone?: 'neutral' | 'danger';
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="rounded-md border border-paper-300 px-2.5 py-1 text-xs text-ink-200 hover:bg-paper-200"
+      className={
+        tone === 'danger'
+          ? 'rounded-md border border-paper-300 px-2.5 py-1 text-xs text-danger hover:bg-paper-200'
+          : 'rounded-md border border-paper-300 px-2.5 py-1 text-xs text-ink-200 hover:bg-paper-200'
+      }
     >
       {label}
     </button>
