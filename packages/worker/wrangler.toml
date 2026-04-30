@@ -14,7 +14,7 @@ ENVIRONMENT = "development"
 # [[d1_databases]]
 # binding = "DB"
 # database_name = "peptide-tracker-dev"
-# database_id = "REPLACE_AFTER_RUNNING_wrangler_d1_create"
+# database_id = "57e43be0-8ef5-4cea-8fc9-6a98fd31a1dc"
 
 # ─── Staging ─────────────────────────────────────────────────────────────────
 [env.staging]
