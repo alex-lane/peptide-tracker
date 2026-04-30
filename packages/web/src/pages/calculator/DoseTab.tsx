@@ -1,9 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { computeDoseVolume, MathError, mcgPerMl, parseDecimalInput } from '@peptide/domain';
+import {
+  computeDoseVolume,
+  MathError,
+  mcgPerMl,
+  parseDecimalInput,
+  reconstitute,
+} from '@peptide/domain';
 import { getDb } from '@/db';
 import type { InventoryBatch, InventoryItem } from '@/db';
 import { ResultTile, ShowYourWork } from './Result';
 import { readPreset, writePreset } from './presets';
+
+interface InferredConcentration {
+  mcgPerMl: number;
+  sourceLabel: string;
+}
 
 interface Props {
   items: InventoryItem[];
@@ -19,30 +30,72 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
   const [doseUnit, setDoseUnit] = useState<'mcg' | 'mg' | 'g' | 'IU'>('mcg');
   const [syringeScale, setSyringeScale] = useState<'U-100' | 'U-40' | 'U-500'>('U-100');
 
-  // Concentration: either inferred from the selected item's reconstituted
-  // batch, or entered manually.
+  // Manual concentration is a fallback when there's no product OR the
+  // selected product has no reconstituted batch and no saved preset.
   const [manualConcentration, setManualConcentration] = useState('');
   const [manualConcUnit, setManualConcUnit] = useState<'mg' | 'mcg'>('mg');
 
-  // The selected item's most-recent reconstituted batch.
-  const inferredConcentration = useMemo(() => {
-    if (!selectedItemId) return null;
-    const candidates = batches
-      .filter((b) => b.itemId === selectedItemId && !b.deletedAt && b.reconstitution)
-      .sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
-    const best = candidates[0];
-    if (!best?.reconstitution) return null;
-    const c = best.reconstitution.resultingConcentration;
-    const mcgPerMlValue =
-      c.unit === 'mg' ? c.value * 1000 : c.unit === 'g' ? c.value * 1_000_000 : c.value;
-    return {
-      mcgPerMl: mcgPerMlValue,
-      fromBatchId: best.id,
-      sourceLabel: `${c.value} ${c.unit}/mL (saved on this batch)`,
+  // Inferred concentration for the currently-selected product. We try in
+  // priority order:
+  //   1. Most-recent reconstituted batch (`batch.reconstitution.resultingConcentration`)
+  //   2. Saved preset on the calculator (vialMass + diluentMl + diluentType)
+  // If neither exists, manual mode renders instead.
+  const [inferred, setInferred] = useState<InferredConcentration | null>(null);
+
+  // Recompute inferred concentration whenever the product or its batches change.
+  useEffect(() => {
+    if (!selectedItemId) {
+      setInferred(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      // Try a real reconstituted batch first.
+      const batchCandidates = batches
+        .filter((b) => b.itemId === selectedItemId && !b.deletedAt && b.reconstitution)
+        .sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
+      const bestBatch = batchCandidates[0];
+      if (bestBatch?.reconstitution) {
+        const c = bestBatch.reconstitution.resultingConcentration;
+        const mcgPerMlValue =
+          c.unit === 'mg' ? c.value * 1000 : c.unit === 'g' ? c.value * 1_000_000 : c.value;
+        if (!cancelled) {
+          setInferred({
+            mcgPerMl: mcgPerMlValue,
+            sourceLabel: `${c.value} ${c.unit}/mL — from reconstituted batch`,
+          });
+        }
+        return;
+      }
+      // Fall back to a saved Reconstitute-tab preset.
+      const preset = await readPreset(getDb(), selectedItemId);
+      if (!preset || !preset.vialMass.trim() || !preset.diluentMl.trim()) {
+        if (!cancelled) setInferred(null);
+        return;
+      }
+      try {
+        const out = reconstitute({
+          vialMass: parseDecimalInput(preset.vialMass),
+          vialMassUnit: preset.vialMassUnit === 'IU' ? 'mg' : preset.vialMassUnit,
+          diluentVolumeMl: parseDecimalInput(preset.diluentMl),
+          diluentType: preset.diluentType,
+        });
+        if (!cancelled) {
+          setInferred({
+            mcgPerMl: out.concentrationMcgPerMl as unknown as number,
+            sourceLabel: `${out.concentrationMgPerMlDisplay} mg/mL — from saved preset`,
+          });
+        }
+      } catch {
+        if (!cancelled) setInferred(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
     };
   }, [selectedItemId, batches]);
 
-  // Pre-fill from preset on item change.
+  // Pre-fill the dose amount/unit/syringe scale from preset on item change.
   useEffect(() => {
     if (!selectedItemId) return;
     const item = items.find((i) => i.id === selectedItemId);
@@ -66,7 +119,8 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
   }, [selectedItemId, items]);
 
   const concentrationMcgPerMl = useMemo<number | null>(() => {
-    if (inferredConcentration) return inferredConcentration.mcgPerMl;
+    if (inferred) return inferred.mcgPerMl;
+    if (selectedItemId) return null; // a product is picked but has no inference yet
     if (!manualConcentration.trim()) return null;
     try {
       const n = parseDecimalInput(manualConcentration);
@@ -74,7 +128,7 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
     } catch {
       return null;
     }
-  }, [inferredConcentration, manualConcentration, manualConcUnit]);
+  }, [inferred, manualConcentration, manualConcUnit, selectedItemId]);
 
   const result = useMemo(() => {
     if (!doseAmount.trim()) return null;
@@ -162,7 +216,8 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
       <ProductPicker items={items} value={selectedItemId} onChange={onSelectItem} />
 
       <ConcentrationSource
-        inferred={inferredConcentration}
+        productSelected={selectedItemId !== null}
+        inferred={inferred}
         manualValue={manualConcentration}
         manualUnit={manualConcUnit}
         onManualValueChange={setManualConcentration}
@@ -305,13 +360,15 @@ function ProductPicker({
 }
 
 function ConcentrationSource({
+  productSelected,
   inferred,
   manualValue,
   manualUnit,
   onManualValueChange,
   onManualUnitChange,
 }: {
-  inferred: { mcgPerMl: number; sourceLabel: string } | null;
+  productSelected: boolean;
+  inferred: InferredConcentration | null;
   manualValue: string;
   manualUnit: 'mg' | 'mcg';
   onManualValueChange: (v: string) => void;
@@ -325,6 +382,17 @@ function ConcentrationSource({
           <span className="num">{inferred.mcgPerMl.toLocaleString()}</span>
           <span className="ml-1 text-ink-100">mcg/mL</span>
           <span className="ml-2 text-xs text-ink-100">— {inferred.sourceLabel}</span>
+        </p>
+      </div>
+    );
+  }
+  if (productSelected) {
+    return (
+      <div className="rounded-md border border-paper-300 bg-paper-50 px-3 py-2 text-sm">
+        <p className="text-xs font-medium uppercase tracking-wide text-ink-100">Concentration</p>
+        <p className="mt-1 text-warn">
+          No reconstitution data for this product yet. Reconstitute a batch from Inventory or
+          save a preset on the Reconstitute tab to enable concentration inference.
         </p>
       </div>
     );

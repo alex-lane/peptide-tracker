@@ -20,7 +20,15 @@ export function CalculatorPage() {
   const [tab, setTab] = useState<TabValue>(
     VALID_TABS.includes(initialTab) ? initialTab : 'reconstitute',
   );
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(initialItemId);
+  // Per-tab product selection. The two tabs maintain independent state so a
+  // product picked on one doesn't leak onto the other. The URL `?item=`
+  // seeds whichever tab loads first.
+  const [reconstituteItemId, setReconstituteItemId] = useState<string | null>(
+    initialTab === 'reconstitute' ? initialItemId : null,
+  );
+  const [doseItemId, setDoseItemId] = useState<string | null>(
+    initialTab === 'dose' ? initialItemId : null,
+  );
 
   const db = getDb();
   const items = useLiveQuery(
@@ -45,17 +53,37 @@ export function CalculatorPage() {
     [],
   );
 
+  function activeItemId(forTab: TabValue): string | null {
+    if (forTab === 'reconstitute') return reconstituteItemId;
+    if (forTab === 'dose') return doseItemId;
+    return null;
+  }
+
   function handleTabChange(next: string) {
     if (!VALID_TABS.includes(next as TabValue)) return;
-    setTab(next as TabValue);
+    const nextTab = next as TabValue;
+    setTab(nextTab);
     const params = new URLSearchParams(searchParams);
-    params.set('tab', next);
-    if (selectedItemId) params.set('item', selectedItemId);
+    params.set('tab', nextTab);
+    const item = activeItemId(nextTab);
+    if (item) params.set('item', item);
+    else params.delete('item');
     setSearchParams(params, { replace: true });
   }
 
-  function handleSelectItem(id: string | null) {
-    setSelectedItemId(id);
+  function handleSelectReconstituteItem(id: string | null) {
+    setReconstituteItemId(id);
+    if (tab !== 'reconstitute') return;
+    const params = new URLSearchParams(searchParams);
+    if (id) params.set('item', id);
+    else params.delete('item');
+    params.set('tab', tab);
+    setSearchParams(params, { replace: true });
+  }
+
+  function handleSelectDoseItem(id: string | null) {
+    setDoseItemId(id);
+    if (tab !== 'dose') return;
     const params = new URLSearchParams(searchParams);
     if (id) params.set('item', id);
     else params.delete('item');
@@ -94,16 +122,16 @@ export function CalculatorPage() {
         <Tabs.Content value="reconstitute" className="space-y-4 pt-4">
           <ReconstituteTab
             items={items ?? []}
-            selectedItemId={selectedItemId}
-            onSelectItem={handleSelectItem}
+            selectedItemId={reconstituteItemId}
+            onSelectItem={handleSelectReconstituteItem}
           />
         </Tabs.Content>
         <Tabs.Content value="dose" className="space-y-4 pt-4">
           <DoseTab
             items={items ?? []}
             batches={batches ?? []}
-            selectedItemId={selectedItemId}
-            onSelectItem={handleSelectItem}
+            selectedItemId={doseItemId}
+            onSelectItem={handleSelectDoseItem}
           />
         </Tabs.Content>
         <Tabs.Content value="conversion" className="space-y-4 pt-4">

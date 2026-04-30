@@ -186,15 +186,13 @@ export function ItemDetailModal({
                             }}
                           />
                         )}
-                        {b.reconstitution && (
-                          <BatchAction
-                            label="Calculate dose"
-                            onClick={() => {
-                              onOpenChange(false);
-                              navigate(`/more/calculator?tab=dose&item=${item.id}`);
-                            }}
-                          />
-                        )}
+                        <BatchAction
+                          label="Calculate dose"
+                          onClick={() => {
+                            onOpenChange(false);
+                            navigate(`/more/calculator?tab=dose&item=${item.id}`);
+                          }}
+                        />
                         <BatchAction
                           label="Edit"
                           onClick={() => {
