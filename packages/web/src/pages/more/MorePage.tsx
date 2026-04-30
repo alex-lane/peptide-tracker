@@ -8,8 +8,13 @@ interface MoreItem {
 }
 
 const items: MoreItem[] = [
+  {
+    label: 'Calculator',
+    desc: 'Reconstitute, dose volume, unit conversions',
+    to: '/more/calculator',
+    available: true,
+  },
   { label: 'Settings', desc: 'Local data, export, import', to: '/settings', available: true },
-  { label: 'Calculator', desc: 'Reconstitute / Dose / Conversion (M6)', available: false },
   { label: 'Insights', desc: 'Adherence, burn-down, custom metrics (M10)', available: false },
   { label: 'Education', desc: 'Reference notes for tracked items', available: false },
 ];

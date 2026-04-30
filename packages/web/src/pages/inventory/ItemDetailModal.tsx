@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
+import { useNavigate } from 'react-router-dom';
 import { getDb, InventoryBatchRepo, InventoryItemRepo, nowIso } from '@/db';
 import type { InventoryBatch, InventoryItem } from '@/db';
 import { Modal } from '@/components/Modal';
@@ -31,6 +32,7 @@ export function ItemDetailModal({
 }: Props) {
   const [pane, setPane] = useState<Pane>('detail');
   const [targetBatch, setTargetBatch] = useState<InventoryBatch | null>(null);
+  const navigate = useNavigate();
 
   function back() {
     setPane('detail');
@@ -181,6 +183,15 @@ export function ItemDetailModal({
                               if (window.confirm('Discard this batch?')) {
                                 void transitionStatus(b, 'discarded');
                               }
+                            }}
+                          />
+                        )}
+                        {b.reconstitution && (
+                          <BatchAction
+                            label="Calculate dose"
+                            onClick={() => {
+                              onOpenChange(false);
+                              navigate(`/more/calculator?tab=dose&item=${item.id}`);
                             }}
                           />
                         )}
