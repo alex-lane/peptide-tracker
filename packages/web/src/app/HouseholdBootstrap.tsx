@@ -14,8 +14,8 @@ interface Props {
  * workaround.
  */
 export function HouseholdBootstrap({ onCreated }: Props) {
-  const [householdName, setHouseholdName] = useState('Lane');
-  const [userName, setUserName] = useState('Alex');
+  const [householdName, setHouseholdName] = useState('');
+  const [userName, setUserName] = useState('');
   const [color, setColor] = useState(PRESET_COLORS[0]!);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,8 +58,12 @@ export function HouseholdBootstrap({ onCreated }: Props) {
           value={householdName}
           onChange={(e) => setHouseholdName(e.target.value)}
           maxLength={120}
+          placeholder="e.g. our household, family, the apartment"
           className="mt-1 w-full rounded-md border border-paper-300 bg-paper-50 px-3 py-2 text-sm"
         />
+        <span className="mt-1 block text-xs text-ink-100">
+          Used as the label in the top bar. Doesn't have to be your last name.
+        </span>
       </label>
       <label className="block text-sm">
         <span className="block font-medium">Your display name</span>
@@ -68,8 +72,12 @@ export function HouseholdBootstrap({ onCreated }: Props) {
           value={userName}
           onChange={(e) => setUserName(e.target.value)}
           maxLength={80}
+          placeholder="e.g. your first name or a nickname"
           className="mt-1 w-full rounded-md border border-paper-300 bg-paper-50 px-3 py-2 text-sm"
         />
+        <span className="mt-1 block text-xs text-ink-100">
+          How dose logs and reminders are labeled. You can add other household members later.
+        </span>
       </label>
       <fieldset className="text-sm">
         <legend className="block font-medium">Your color</legend>
