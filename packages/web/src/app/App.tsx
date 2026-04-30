@@ -4,6 +4,7 @@ import { TodayPage } from '@/pages/today/TodayPage';
 import { InventoryPage } from '@/pages/inventory/InventoryPage';
 import { ProtocolsPage } from '@/pages/protocols/ProtocolsPage';
 import { MorePage } from '@/pages/more/MorePage';
+import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { ConsentGate } from './ConsentGate';
 
 export function App() {
@@ -16,6 +17,7 @@ export function App() {
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/protocols" element={<ProtocolsPage />} />
           <Route path="/more" element={<MorePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/today" replace />} />
         </Route>
       </Routes>
