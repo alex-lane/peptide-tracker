@@ -4,6 +4,7 @@ import { getDb } from '@/db';
 import { useSyncStatus } from '@/sync/useSyncStatus';
 import { useActive } from '@/app/useActive';
 import { cn } from '@/lib/cn';
+import { UserSwitcher } from './UserSwitcher';
 
 export function TopBar() {
   const status = useSyncStatus();
@@ -13,10 +14,6 @@ export function TopBar() {
   const household = useLiveQuery(
     async () => (active.householdId ? await db.households.get(active.householdId) : undefined),
     [active.householdId],
-  );
-  const user = useLiveQuery(
-    async () => (active.userId ? await db.userProfiles.get(active.userId) : undefined),
-    [active.userId],
   );
 
   const dotLabel = describeStatus(status);
@@ -44,20 +41,7 @@ export function TopBar() {
             />
             {status.outboxDepth > 0 && <span className="num">{status.outboxDepth}</span>}
           </Link>
-          {user && (
-            <button
-              type="button"
-              aria-label="Switch user"
-              className="flex items-center gap-1.5 rounded-full bg-paper-200 px-3 py-1.5 text-xs text-ink-200 transition-colors duration-120 hover:bg-paper-300"
-            >
-              <span
-                aria-hidden
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: user.color }}
-              />
-              {user.displayName}
-            </button>
-          )}
+          <UserSwitcher />
         </div>
       </div>
     </header>
