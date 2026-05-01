@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { Home, Box, ListOrdered, MoreHorizontal, Plus } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
@@ -29,16 +29,17 @@ export function BottomNav() {
           <NavTab key={item.to} {...item} />
         ))}
 
-        {/* Center-docked LOG button — primary CTA */}
+        {/* Center-docked LOG button — primary CTA. Routes to /today with a
+            param that opens the manual log modal. */}
         <div className="flex justify-center">
-          <button
-            type="button"
+          <Link
+            to="/today?log=manual"
             aria-label="Log a dose"
-            className="-translate-y-3 h-16 w-16 rounded-full bg-accent-primary text-white flex items-center justify-center shadow-glow transition-transform duration-120 ease-out-fast active:scale-95 hover:bg-accent-primary-hover"
+            className="-translate-y-1 h-14 w-14 rounded-full bg-accent-primary text-white flex items-center justify-center shadow-glow transition-transform duration-120 ease-out-fast active:scale-95 hover:bg-accent-primary-hover"
           >
             <Plus className="h-6 w-6" aria-hidden strokeWidth={2.5} />
             <span className="sr-only">Log a dose</span>
-          </button>
+          </Link>
         </div>
 
         {RIGHT_ITEMS.map((item) => (

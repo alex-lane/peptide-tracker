@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import {
+  Plus,
+  Trash2,
+  CalendarClock,
+  AlertTriangle,
+  TrendingDown,
+  History,
+  Layers,
+  Sparkles,
+} from 'lucide-react';
 import {
   DoseLogRepo,
   getDb,
@@ -110,6 +120,18 @@ export function TodayPage() {
   const [manualLogOpen, setManualLogOpen] = useState(false);
   const [scheduleToLog, setScheduleToLog] = useState<DoseSchedule | null>(null);
 
+  // Open the manual log modal when navigated here with `?log=manual` —
+  // wired from the floating + button in BottomNav.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('log') === 'manual') {
+      setManualLogOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('log');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   if (active.loading) {
     return <div className="text-sm text-ink-100">Loading…</div>;
   }
@@ -130,9 +152,16 @@ export function TodayPage() {
   return (
     <section className="space-y-6">
       <header className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl">{me.displayName}'s day</h1>
-          <p className="text-sm text-ink-100">Pending doses, warnings, and recent activity.</p>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent-primary/15 text-accent-primary">
+            <Sparkles className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="space-y-0.5">
+            <h1 className="text-xl">{me.displayName}'s day</h1>
+            <p className="text-xs text-text-secondary">
+              Pending doses, warnings, and recent activity.
+            </p>
+          </div>
         </div>
         <button
           type="button"
@@ -241,11 +270,14 @@ function PendingDosesCard({
   const total = buckets.missed.length + buckets.today.length + buckets.upcoming.length;
 
   return (
-    <div className="rounded-md border border-paper-300 p-4">
-      <h2 className="mb-2 text-base">Pending doses</h2>
+    <div className="rounded-lg border border-border-subtle bg-bg-surface p-4">
+      <h2 className="mb-3 flex items-center gap-2 text-base">
+        <CalendarClock className="h-4 w-4 text-accent-primary" aria-hidden />
+        Pending doses
+      </h2>
       {total === 0 ? (
-        <p className="text-sm text-ink-100">
-          Nothing scheduled. Add a protocol or use "Log dose" to record an ad-hoc dose.
+        <p className="text-sm text-text-secondary">
+          Nothing scheduled. Add a protocol or use &ldquo;Log dose&rdquo; to record an ad-hoc dose.
         </p>
       ) : (
         <div className="space-y-3 text-sm">
@@ -396,10 +428,13 @@ function InventoryWarningsCard({
     [batches, schedules],
   );
   return (
-    <div className="rounded-md border border-paper-300 p-4">
-      <h2 className="mb-2 text-base">Inventory warnings</h2>
+    <div className="rounded-lg border border-border-subtle bg-bg-surface p-4">
+      <h2 className="mb-3 flex items-center gap-2 text-base">
+        <AlertTriangle className="h-4 w-4 text-warn" aria-hidden />
+        Inventory warnings
+      </h2>
       {warnings.length === 0 ? (
-        <p className="text-sm text-ink-100">No warnings — inventory looks clear.</p>
+        <p className="text-sm text-text-secondary">No warnings — inventory looks clear.</p>
       ) : (
         <ul className="ruled-y rounded-md border border-paper-300 text-sm">
           {warnings.map((w) => (
@@ -460,9 +495,12 @@ function BurnDownCard({
   if (nonEmpty.length === 0) return null;
 
   return (
-    <div className="rounded-md border border-paper-300 p-4">
-      <h2 className="mb-2 text-base">Upcoming load (14 days)</h2>
-      <ul className="ruled-y rounded-md border border-paper-300 text-sm">
+    <div className="rounded-lg border border-border-subtle bg-bg-surface p-4">
+      <h2 className="mb-3 flex items-center gap-2 text-base">
+        <TrendingDown className="h-4 w-4 text-accent-cyan" aria-hidden />
+        Upcoming load (14 days)
+      </h2>
+      <ul className="ruled-y rounded-md border border-border-subtle text-sm">
         {nonEmpty.map((s, i) => (
           <li key={i} className="flex items-center gap-2 px-3 py-2">
             <span className="flex-1 truncate">
@@ -508,10 +546,13 @@ function RecentActivityCard({
 }) {
   const itemNameById = new Map(inventoryItems.map((i) => [i.id, i.name]));
   return (
-    <div className="rounded-md border border-paper-300 p-4">
-      <h2 className="mb-2 text-base">Recent activity</h2>
+    <div className="rounded-lg border border-border-subtle bg-bg-surface p-4">
+      <h2 className="mb-3 flex items-center gap-2 text-base">
+        <History className="h-4 w-4 text-accent-pink" aria-hidden />
+        Recent activity
+      </h2>
       {logs.length === 0 ? (
-        <p className="text-sm text-ink-100">No dose logs yet.</p>
+        <p className="text-sm text-text-secondary">No dose logs yet.</p>
       ) : (
         <ul className="ruled-y rounded-md border border-paper-300 text-sm">
           {logs.map((l) => (
@@ -563,8 +604,11 @@ function ActiveProtocolsCard({ protocols }: { protocols: Protocol[] }) {
   const active = protocols.filter((p) => p.active);
   if (active.length === 0) return null;
   return (
-    <div className="rounded-md border border-paper-300 p-4">
-      <h2 className="mb-2 text-base">Active protocols</h2>
+    <div className="rounded-lg border border-border-subtle bg-bg-surface p-4">
+      <h2 className="mb-3 flex items-center gap-2 text-base">
+        <Layers className="h-4 w-4 text-accent-primary" aria-hidden />
+        Active protocols
+      </h2>
       <ul className="flex flex-wrap gap-2 text-xs">
         {active.map((p) => (
           <li

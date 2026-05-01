@@ -293,12 +293,13 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
         </span>
       </fieldset>
 
-      {result?.ok && (
-        <SyringeVisualization
-          capacityUnits={syringeCapacityUnits}
-          fillUnits={result.data.insulinUnitsU100Display}
-        />
-      )}
+      {/* Always-visible syringe preview. Empty barrel pre-result; fills with
+          gradient as the user types. */}
+      <SyringeVisualization
+        capacityUnits={syringeCapacityUnits}
+        fillUnits={result?.ok ? result.data.insulinUnitsU100Display : 0}
+      />
+
 
       {result?.ok ? (
         <ResultTile

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Download, Plus, Trash2 } from 'lucide-react';
+import { Download, Plus, Trash2, TrendingUp, Target, TrendingDown, Activity, FileDown } from 'lucide-react';
 import {
   getDb,
   type CustomMetric,
@@ -127,12 +127,16 @@ export function InsightsPage() {
 
   return (
     <section className="space-y-4">
-      <header className="space-y-1">
-        <h1 className="text-xl">Insights</h1>
-        <p className="text-sm text-ink-100">
-          Adherence, inventory burn-down, and your custom metrics. Tracking only — no clinical
-          interpretation.
-        </p>
+      <header className="flex items-center gap-3">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent-cyan/15 text-accent-cyan">
+          <TrendingUp className="h-5 w-5" aria-hidden />
+        </span>
+        <div className="space-y-0.5">
+          <h1 className="text-xl">Insights</h1>
+          <p className="text-xs text-text-secondary">
+            Adherence, inventory burn-down, and your custom metrics. Tracking only.
+          </p>
+        </div>
       </header>
 
       <AdherenceCard schedules={schedules ?? []} logs={doseLogs ?? []} />
@@ -189,8 +193,11 @@ function AdherenceCard({
   }));
 
   return (
-    <div className="rounded-md border border-paper-300 p-4 space-y-3">
-      <h2 className="text-base">Adherence</h2>
+    <div className="rounded-lg border border-border-subtle bg-bg-surface p-4 space-y-3">
+      <h2 className="flex items-center gap-2 text-base">
+        <Target className="h-4 w-4 text-accent-primary" aria-hidden />
+        Adherence
+      </h2>
       <div className="flex items-center gap-4">
         <AdherenceRing rate={a30.rate} label="30 days" className="text-ink-300" />
         <AdherenceRing rate={a90.rate} label="90 days" className="text-ink-300" />
@@ -253,8 +260,11 @@ function BurndownCard({
 
   if (batchesWithProjections.length === 0) {
     return (
-      <div className="rounded-md border border-paper-300 p-4 space-y-2">
-        <h2 className="text-base">Burn-down</h2>
+      <div className="rounded-lg border border-border-subtle bg-bg-surface p-4 space-y-2">
+        <h2 className="flex items-center gap-2 text-base">
+          <TrendingDown className="h-4 w-4 text-accent-pink" aria-hidden />
+          Burn-down
+        </h2>
         <p className="text-sm text-ink-100">
           No active batch + schedule pairs to project. Set a preferred batch on a protocol item to
           see depletion forecasts here.
@@ -264,8 +274,11 @@ function BurndownCard({
   }
 
   return (
-    <div className="rounded-md border border-paper-300 p-4 space-y-3">
-      <h2 className="text-base">Burn-down</h2>
+    <div className="rounded-lg border border-border-subtle bg-bg-surface p-4 space-y-3">
+      <h2 className="flex items-center gap-2 text-base">
+        <TrendingDown className="h-4 w-4 text-accent-pink" aria-hidden />
+        Burn-down
+      </h2>
       <ul className="space-y-3">
         {batchesWithProjections.map(({ batch, result }) => {
           const points = result.points.map((p, i, arr) => ({
@@ -329,7 +342,10 @@ function CustomMetricsCard({
   return (
     <div className="rounded-md border border-paper-300 p-4 space-y-3">
       <header className="flex items-center justify-between">
-        <h2 className="text-base">Custom metrics</h2>
+        <h2 className="flex items-center gap-2 text-base">
+          <Activity className="h-4 w-4 text-accent-cyan" aria-hidden />
+          Custom metrics
+        </h2>
         <button
           type="button"
           onClick={() => setAdding(true)}
@@ -615,8 +631,11 @@ function ExportCard({
   }
 
   return (
-    <div className="rounded-md border border-paper-300 p-4 space-y-2 print:hidden">
-      <h2 className="text-base">Export</h2>
+    <div className="rounded-lg border border-border-subtle bg-bg-surface p-4 space-y-2 print:hidden">
+      <h2 className="flex items-center gap-2 text-base">
+        <FileDown className="h-4 w-4 text-accent-primary" aria-hidden />
+        Export
+      </h2>
       <p className="text-sm text-ink-100">
         Per-user CSV / JSON / PDF for {userName}. PDF goes through the browser print dialog —
         choose "Save as PDF".

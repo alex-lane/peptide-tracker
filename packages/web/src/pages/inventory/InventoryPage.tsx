@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Package, Beaker, Pill as PillIcon, Wind, type LucideIcon } from 'lucide-react';
 import type { InventoryItem } from '@/db';
 import { useActive } from '@/app/useActive';
 import { Modal } from '@/components/Modal';
@@ -10,11 +10,15 @@ import { FillBar } from './fill-bar';
 import { useInventory, type InventoryRow } from './useInventory';
 import { daysUntil, labelForm, labelStatus, pillClassForStatus } from './formatting';
 
-const FORM_FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'injectable', label: 'Injectables' },
-  { value: 'oral', label: 'Oral' },
-  { value: 'topical', label: 'Topical' },
+const FORM_FILTERS: ReadonlyArray<{
+  value: 'all' | 'injectable' | 'oral' | 'topical';
+  label: string;
+  icon: LucideIcon;
+}> = [
+  { value: 'all', label: 'All', icon: Package },
+  { value: 'injectable', label: 'Injectables', icon: Beaker },
+  { value: 'oral', label: 'Oral', icon: PillIcon },
+  { value: 'topical', label: 'Topical', icon: Wind },
 ] as const;
 
 type FormFilter = (typeof FORM_FILTERS)[number]['value'];
@@ -58,11 +62,16 @@ export function InventoryPage() {
   return (
     <section className="space-y-4">
       <header className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl">Inventory</h1>
-          <p className="text-sm text-ink-100">
-            Vials, capsules, sprays, supplies — what's in the fridge.
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent-cyan/15 text-accent-cyan">
+            <Package className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="space-y-0.5">
+            <h1 className="text-xl">Inventory</h1>
+            <p className="text-xs text-text-secondary">
+              Vials, capsules, sprays, supplies — what's in the fridge.
+            </p>
+          </div>
         </div>
         <button
           type="button"
@@ -74,22 +83,27 @@ export function InventoryPage() {
       </header>
 
       <div className="flex gap-1 overflow-x-auto" role="tablist" aria-label="Filter by form">
-        {FORM_FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            role="tab"
-            aria-selected={filter === f.value}
-            onClick={() => setFilter(f.value)}
-            className={
-              filter === f.value
-                ? 'rounded-full bg-ink-300 px-3 py-1.5 text-xs text-paper-100'
-                : 'rounded-full bg-paper-200 px-3 py-1.5 text-xs text-ink-200 hover:bg-paper-300'
-            }
-          >
-            {f.label}
-          </button>
-        ))}
+        {FORM_FILTERS.map((f) => {
+          const Icon = f.icon;
+          const active = filter === f.value;
+          return (
+            <button
+              key={f.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setFilter(f.value)}
+              className={
+                active
+                  ? 'flex items-center gap-1.5 rounded-full bg-accent-primary px-3 py-1.5 text-xs text-white shadow-glow'
+                  : 'flex items-center gap-1.5 rounded-full bg-bg-elevated px-3 py-1.5 text-xs text-text-secondary hover:bg-border-subtle'
+              }
+            >
+              <Icon className="h-3 w-3" aria-hidden />
+              {f.label}
+            </button>
+          );
+        })}
       </div>
 
       {filtered.length === 0 ? (

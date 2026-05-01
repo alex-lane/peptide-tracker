@@ -26,7 +26,7 @@ describe('App scaffold', () => {
     );
     // Layout chrome from M0 still mounts.
     expect(screen.getByRole('contentinfo', { name: /Disclaimer/i })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Log a dose/i })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Log a dose/i })).toBeTruthy();
     // With no household yet, the Today page asynchronously resolves to the
     // M5 bootstrap form (the active-household live query starts with
     // loading=true). findByRole waits for the rerender.

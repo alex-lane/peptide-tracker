@@ -13,7 +13,7 @@ test.describe('M0 smoke', () => {
     // ("Welcome"). Pre-M5 this heading was "Today" — kept here as a
     // smoke check that the layout chrome shows up regardless.
     await expect(page.getByRole('heading', { name: /^Welcome$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Log a dose/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Log a dose/i })).toBeVisible();
     await expect(page.getByRole('contentinfo', { name: /Disclaimer/i })).toBeVisible();
   });
 });

@@ -4,6 +4,7 @@ import { getDb } from '@/db';
 import type { InventoryItem } from '@/db';
 import { ResultTile, ShowYourWork } from './Result';
 import { readPreset, writePreset } from './presets';
+import { SyringeVisualization } from './SyringeVisualization';
 
 interface Props {
   items: InventoryItem[];
@@ -158,6 +159,13 @@ export function ReconstituteTab({ items, selectedItemId, onSelectItem }: Props) 
           hint={result && !result.ok ? result.error : 'Enter a vial mass and diluent volume.'}
         />
       )}
+
+      {/* Show a 100u reference syringe with the diluent volume marked, so
+          the user gets a visual feel for how much they're injecting. */}
+      <SyringeVisualization
+        capacityUnits={100}
+        fillUnits={result?.ok && parseFloat(diluentMl) ? Math.min(100, parseFloat(diluentMl) * 100) : 0}
+      />
 
       <ShowYourWork
         {...(result?.ok ? { formula: result.data.formula } : {})}

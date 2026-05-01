@@ -2,6 +2,7 @@ import { useState } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSearchParams } from 'react-router-dom';
+import { Beaker, Calculator, ArrowLeftRight } from 'lucide-react';
 import { getDb } from '@/db';
 import { useActive } from '@/app/useActive';
 import { ReconstituteTab } from './ReconstituteTab';
@@ -104,19 +105,29 @@ export function CalculatorPage() {
 
   return (
     <section className="space-y-4">
-      <header className="space-y-1">
-        <h1 className="text-xl">Calculator</h1>
-        <p className="text-sm text-ink-100">
-          Reconstitution, dose volume, and unit conversions. Enter your own protocol — the
-          calculator never recommends a dose.
-        </p>
+      <header className="flex items-center gap-3">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent-primary/15 text-accent-primary">
+          <Calculator className="h-5 w-5" aria-hidden />
+        </span>
+        <div className="space-y-0.5">
+          <h1 className="text-xl">Calculator</h1>
+          <p className="text-xs text-text-secondary">
+            Reconstitution, dose volume, and unit conversions.
+          </p>
+        </div>
       </header>
 
       <Tabs.Root value={tab} onValueChange={handleTabChange}>
-        <Tabs.List className="flex border-b border-paper-300" aria-label="Calculator tabs">
-          <TabTrigger value="reconstitute">Reconstitute</TabTrigger>
-          <TabTrigger value="dose">Dose</TabTrigger>
-          <TabTrigger value="conversion">Conversion</TabTrigger>
+        <Tabs.List className="flex gap-1 border-b border-border-subtle" aria-label="Calculator tabs">
+          <TabTrigger value="reconstitute" icon={<Beaker className="h-3.5 w-3.5" aria-hidden />}>
+            Reconstitute
+          </TabTrigger>
+          <TabTrigger value="dose" icon={<Calculator className="h-3.5 w-3.5" aria-hidden />}>
+            Dose
+          </TabTrigger>
+          <TabTrigger value="conversion" icon={<ArrowLeftRight className="h-3.5 w-3.5" aria-hidden />}>
+            Conversion
+          </TabTrigger>
         </Tabs.List>
 
         <Tabs.Content value="reconstitute" className="space-y-4 pt-4">
@@ -138,20 +149,25 @@ export function CalculatorPage() {
           <ConversionTab />
         </Tabs.Content>
       </Tabs.Root>
-
-      <p className="text-xs text-ink-100">
-        Tracking and calculation only — not medical advice. Verify the math before drawing.
-      </p>
     </section>
   );
 }
 
-function TabTrigger({ value, children }: { value: string; children: React.ReactNode }) {
+function TabTrigger({
+  value,
+  icon,
+  children,
+}: {
+  value: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <Tabs.Trigger
       value={value}
-      className="-mb-px border-b-2 border-transparent px-3 py-2 text-sm text-ink-100 data-[state=active]:border-ink-300 data-[state=active]:text-ink-300"
+      className="-mb-px flex items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-sm text-text-secondary transition-colors hover:text-text-primary data-[state=active]:border-accent-primary data-[state=active]:text-accent-primary"
     >
+      {icon}
       {children}
     </Tabs.Trigger>
   );

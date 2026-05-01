@@ -195,22 +195,24 @@ function VolumeConverter() {
         </div>
       </fieldset>
       {parsed && parsed.ok ? (
-        <>
-          <div className="grid grid-cols-2 gap-2">
-            <ConversionChip label="mL" value={formatNum(parsed.ml)} highlighted={unit === 'mL'} />
-            <ConversionChip
-              label="U-100 units"
-              value={formatNum(parsed.units)}
-              highlighted={unit === 'units'}
-            />
-          </div>
-          <SyringeVisualization capacityUnits={capacityUnits} fillUnits={parsed.units} />
-        </>
+        <div className="grid grid-cols-2 gap-2">
+          <ConversionChip label="mL" value={formatNum(parsed.ml)} highlighted={unit === 'mL'} />
+          <ConversionChip
+            label="U-100 units"
+            value={formatNum(parsed.units)}
+            highlighted={unit === 'units'}
+          />
+        </div>
       ) : parsed && !parsed.ok ? (
         <p className="text-sm text-warn">{parsed.error}</p>
       ) : (
         <p className="text-sm text-text-secondary">Enter an amount to see conversions.</p>
       )}
+      {/* Always show the syringe so the user can preview a draw without typing. */}
+      <SyringeVisualization
+        capacityUnits={capacityUnits}
+        fillUnits={parsed && parsed.ok ? parsed.units : 0}
+      />
       <p className="text-xs text-text-muted">
         Constant: 1 U-100 unit = <span className="num">{ML_PER_INSULIN_UNIT_U100}</span> mL. U-40
         and U-500 syringes use different concentration calibrations and aren't converted here.

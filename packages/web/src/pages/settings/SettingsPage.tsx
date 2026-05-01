@@ -1,4 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  Settings as SettingsIcon,
+  Database,
+  Cloud,
+  Upload,
+  Download,
+} from 'lucide-react';
 import { exportToJson, getDb, importFromJson, type ImportMode } from '@/db';
 import { getEngine, readConfig, writeConfig, type SyncConfig } from '@/sync';
 import { useSyncStatus } from '@/sync/useSyncStatus';
@@ -108,15 +115,23 @@ export function SettingsPage() {
 
   return (
     <section className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-xl">Settings</h1>
-        <p className="text-sm text-ink-100">
-          Local data lives in your browser. Export periodically — recommended every 14 days.
-        </p>
+      <header className="flex items-center gap-3">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent-pink/15 text-accent-pink">
+          <SettingsIcon className="h-5 w-5" aria-hidden />
+        </span>
+        <div className="space-y-0.5">
+          <h1 className="text-xl">Settings</h1>
+          <p className="text-xs text-text-secondary">
+            Local data lives in your browser. Export every 14 days.
+          </p>
+        </div>
       </header>
 
-      <div className="rounded-md border border-paper-300 p-4 space-y-3">
-        <h2 className="text-base">Local database</h2>
+      <div className="rounded-lg border border-border-subtle bg-bg-surface p-4 space-y-3">
+        <h2 className="flex items-center gap-2 text-base">
+          <Database className="h-4 w-4 text-accent-cyan" aria-hidden />
+          Local database
+        </h2>
         {counts ? (
           <p className="text-sm text-ink-100">
             <span className="num">{counts.logs}</span> dose logs ·{' '}
@@ -127,8 +142,11 @@ export function SettingsPage() {
         )}
       </div>
 
-      <div className="rounded-md border border-paper-300 p-4 space-y-3">
-        <h2 className="text-base">Sync</h2>
+      <div className="rounded-lg border border-border-subtle bg-bg-surface p-4 space-y-3">
+        <h2 className="flex items-center gap-2 text-base">
+          <Cloud className="h-4 w-4 text-accent-primary" aria-hidden />
+          Sync
+        </h2>
         <p className="text-sm text-ink-100">
           {sync.configured
             ? sync.online
@@ -217,8 +235,11 @@ export function SettingsPage() {
 
       <CalendarSettings workerUrl={cfg.workerUrl} />
 
-      <div className="rounded-md border border-paper-300 p-4 space-y-3">
-        <h2 className="text-base">Export</h2>
+      <div className="rounded-lg border border-border-subtle bg-bg-surface p-4 space-y-3">
+        <h2 className="flex items-center gap-2 text-base">
+          <Download className="h-4 w-4 text-accent-cyan" aria-hidden />
+          Export
+        </h2>
         <p className="text-sm text-ink-100">
           Saves a SHA-256-verified JSON file containing every household, user, item, batch,
           schedule, log, adjustment, and education entry on this device.
@@ -233,8 +254,11 @@ export function SettingsPage() {
         </button>
       </div>
 
-      <div className="rounded-md border border-paper-300 p-4 space-y-3">
-        <h2 className="text-base">Import</h2>
+      <div className="rounded-lg border border-border-subtle bg-bg-surface p-4 space-y-3">
+        <h2 className="flex items-center gap-2 text-base">
+          <Upload className="h-4 w-4 text-accent-pink" aria-hidden />
+          Import
+        </h2>
         <p className="text-sm text-ink-100">
           Restore from a previous export. Hash is verified before any write.
         </p>

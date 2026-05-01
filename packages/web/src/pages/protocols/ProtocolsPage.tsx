@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus } from 'lucide-react';
+import { Plus, ListOrdered } from 'lucide-react';
 import {
   getDb,
   ProtocolRepo,
@@ -101,18 +101,23 @@ export function ProtocolsPage() {
   return (
     <section className="space-y-4">
       <header className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl">Protocols</h1>
-          <p className="text-sm text-ink-100">
-            Named stacks &amp; schedules per user. Activating expands 60 days of doses.
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent-pink/15 text-accent-pink">
+            <ListOrdered className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="space-y-0.5">
+            <h1 className="text-xl">Protocols</h1>
+            <p className="text-xs text-text-secondary">
+              Named stacks &amp; schedules per user. Activating expands 60 days of doses.
+            </p>
+          </div>
         </div>
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="flex items-center gap-1 rounded-md bg-ink-300 px-3 py-2 text-sm text-paper-100 hover:bg-ink-200"
+          className="flex items-center gap-1 rounded-md bg-accent-primary px-3 py-2 text-sm text-white shadow-glow transition-colors hover:bg-accent-primary-hover"
         >
-          <Plus className="h-4 w-4" /> New protocol
+          <Plus className="h-4 w-4" strokeWidth={2.5} /> New protocol
         </button>
       </header>
 
