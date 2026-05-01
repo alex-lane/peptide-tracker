@@ -41,6 +41,23 @@
   .touch-lg {
     min-height: 56px;
   }
+
+  /* Keyboard focus rings — applied uniformly so screen-reader + keyboard
+     users never lose track of focus. Uses :focus-visible so mouse clicks
+     don't paint a ring. */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [role='button']:focus-visible,
+  [role='tab']:focus-visible,
+  [role='menuitem']:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid theme('colors.ink.300');
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
 /* Dark mode: deep-ink ground, parchment ink */

@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { AppLayout } from './AppLayout';
 import { TodayPage } from '@/pages/today/TodayPage';
 import { InventoryPage } from '@/pages/inventory/InventoryPage';
@@ -8,6 +9,11 @@ import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { CalculatorPage } from '@/pages/calculator/CalculatorPage';
 import { InsightsPage } from '@/pages/insights/InsightsPage';
 import { ConsentGate } from './ConsentGate';
+import { ErrorBoundary } from './ErrorBoundary';
+
+function guarded(scope: string, node: ReactNode): ReactNode {
+  return <ErrorBoundary scope={scope}>{node}</ErrorBoundary>;
+}
 
 export function App() {
   return (
@@ -15,13 +21,19 @@ export function App() {
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/today" replace />} />
-          <Route path="/today" element={<TodayPage />} />
-          <Route path="/inventory" element={<InventoryPage />} />
-          <Route path="/protocols" element={<ProtocolsPage />} />
-          <Route path="/more" element={<MorePage />} />
-          <Route path="/more/calculator" element={<CalculatorPage />} />
-          <Route path="/more/insights" element={<InsightsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/today" element={guarded('Today', <TodayPage />)} />
+          <Route path="/inventory" element={guarded('Inventory', <InventoryPage />)} />
+          <Route path="/protocols" element={guarded('Protocols', <ProtocolsPage />)} />
+          <Route path="/more" element={guarded('More', <MorePage />)} />
+          <Route
+            path="/more/calculator"
+            element={guarded('Calculator', <CalculatorPage />)}
+          />
+          <Route
+            path="/more/insights"
+            element={guarded('Insights', <InsightsPage />)}
+          />
+          <Route path="/settings" element={guarded('Settings', <SettingsPage />)} />
           <Route path="*" element={<Navigate to="/today" replace />} />
         </Route>
       </Routes>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Peptide Tracker">
+  <rect width="512" height="512" rx="96" fill="#1C1A17"/>
+  <g fill="none" stroke="#F8F4EC" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Vial body -->
+    <path d="M196 112 h120 v40 h-12 v224 a48 48 0 0 1 -48 48 h0 a48 48 0 0 1 -48 -48 v-224 h-12 z"/>
+    <!-- Liquid fill line -->
+    <line x1="208" y1="304" x2="304" y2="304"/>
+    <!-- Bubbles -->
+    <circle cx="240" cy="340" r="6"/>
+    <circle cx="270" cy="360" r="4"/>
+    <circle cx="252" cy="376" r="5"/>
+    <!-- Cap shading -->
+    <line x1="208" y1="128" x2="304" y2="128"/>
+  </g>
+</svg>
