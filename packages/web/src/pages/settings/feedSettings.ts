@@ -24,51 +24,58 @@ export async function getOrCreateUserFeed(
   householdId: string,
   userId: string,
 ): Promise<CalendarFeedSettings> {
-  const existing = await db.calendarFeedSettings
-    .where('[householdId+scope+userId]')
-    .equals([householdId, 'user', userId])
-    .first();
-  if (existing) return existing;
-  const row: CalendarFeedSettings = {
-    id: newId(),
-    householdId,
-    scope: 'user',
-    userId,
-    enabled: true,
-    privacy: 'generic',
-    includeDose: false,
-    includeProtocolName: false,
-    includeProductName: false,
-    includeReminders: false,
-    updatedAt: nowIso(),
-  };
-  await db.calendarFeedSettings.put(row);
-  return row;
+  // Read + write inside one tx so two tabs racing on first-mount can't both
+  // insert duplicate rows. Dexie's compound index isn't a uniqueness
+  // constraint, only the tx serialization protects us.
+  return db.transaction('rw', db.calendarFeedSettings, async () => {
+    const existing = await db.calendarFeedSettings
+      .where('[householdId+scope+userId]')
+      .equals([householdId, 'user', userId])
+      .first();
+    if (existing) return existing;
+    const row: CalendarFeedSettings = {
+      id: newId(),
+      householdId,
+      scope: 'user',
+      userId,
+      enabled: true,
+      privacy: 'generic',
+      includeDose: false,
+      includeProtocolName: false,
+      includeProductName: false,
+      includeReminders: false,
+      updatedAt: nowIso(),
+    };
+    await db.calendarFeedSettings.put(row);
+    return row;
+  });
 }
 
 export async function getOrCreateHouseholdFeed(
   db: PeptideDb,
   householdId: string,
 ): Promise<CalendarFeedSettings> {
-  const existing = await db.calendarFeedSettings
-    .where('[householdId+scope+userId]')
-    .equals([householdId, 'household', ''])
-    .first();
-  if (existing) return existing;
-  const row: CalendarFeedSettings = {
-    id: newId(),
-    householdId,
-    scope: 'household',
-    enabled: false,
-    privacy: 'minimal',
-    includeDose: false,
-    includeProtocolName: false,
-    includeProductName: false,
-    includeReminders: false,
-    updatedAt: nowIso(),
-  };
-  await db.calendarFeedSettings.put(row);
-  return row;
+  return db.transaction('rw', db.calendarFeedSettings, async () => {
+    const existing = await db.calendarFeedSettings
+      .where('[householdId+scope+userId]')
+      .equals([householdId, 'household', ''])
+      .first();
+    if (existing) return existing;
+    const row: CalendarFeedSettings = {
+      id: newId(),
+      householdId,
+      scope: 'household',
+      enabled: false,
+      privacy: 'minimal',
+      includeDose: false,
+      includeProtocolName: false,
+      includeProductName: false,
+      includeReminders: false,
+      updatedAt: nowIso(),
+    };
+    await db.calendarFeedSettings.put(row);
+    return row;
+  });
 }
 
 export async function updateFeed(

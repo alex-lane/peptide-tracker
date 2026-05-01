@@ -1,11 +1,17 @@
 // GET /feed/user/:userId.ics?token=...
 // GET /feed/household/:householdId.ics?token=...
 //
-// Public endpoint (no Access JWT) — authorization is via the HMAC-signed
-// token in the query string. The token's `feedId` points at a
-// CalendarFeedSettings row whose `feedToken` field acts as a per-feed nonce
-// — rotating that nonce invalidates every previously-issued token for the
-// same row, even though they were all signed with the same env secret.
+// Public endpoint (no Cloudflare Access JWT) — authorization is via the
+// opaque per-feed nonce in the query string. The Worker compares the
+// supplied token to `CalendarFeedSettings.feedToken` (the only row matching
+// the URL's scope + subject); rotating that column from the Settings UI
+// invalidates every previously-issued URL.
+//
+// We deliberately do NOT use HMAC signatures here — the nonce IS the secret.
+// Equivalent security in this trust model: traffic is HTTPS, only the Worker
+// writes `feedToken`, and every request reads the row anyway. Future-work
+// `feedToken.ts` HMAC plumbing in @peptide/domain stays for offline-verifiable
+// tokens if and when that becomes useful.
 //
 // Returns ICS with ETag (sha-256 of body) + Cache-Control: max-age=900.
 
@@ -13,9 +19,6 @@ import { Hono, type Context } from 'hono';
 import {
   buildEventsForFeed,
   generateIcs,
-  importHmacKey,
-  verifyFeedToken,
-  FeedTokenError,
   type CalendarFeedSettings,
   type Household,
   type InventoryItem,
@@ -49,42 +52,22 @@ async function handleFeed(
 ): Promise<Response> {
   const env = c.env;
   if (!env.DB) return text(503, 'D1 binding missing.');
-  if (!env.FEED_HMAC_KEY) return text(503, 'FEED_HMAC_KEY not configured.');
 
   const token = c.req.query('token');
   if (!token) return text(401, 'Missing token.');
-
-  // Validate signature.
-  const key = await importHmacKey(env.FEED_HMAC_KEY);
-  let payload;
-  try {
-    payload = await verifyFeedToken(key, token);
-  } catch (err) {
-    if (err instanceof FeedTokenError) {
-      const status = err.kind === 'expired' ? 410 : 401;
-      return text(status, err.message);
-    }
-    return text(401, 'Bad token.');
-  }
-
-  if (payload.scope !== scope) return text(403, 'Token scope does not match path.');
 
   const rawParam =
     scope === 'user' ? c.req.param('userId') : c.req.param('householdId');
   // The route regex captures the param including the ".ics" extension; strip it.
   const subjectId = rawParam ? rawParam.replace(/\.ics$/, '') : '';
-  if (!subjectId || subjectId !== payload.subjectId) {
-    return text(403, 'Token subject does not match path.');
-  }
+  if (!subjectId) return text(400, 'Missing subject id.');
 
-  const feed = await fetchFeed(env.DB, payload.feedId);
+  const feed = await fetchFeedBySubject(env.DB, scope, subjectId);
   if (!feed || !feed.enabled) return text(404, 'Feed disabled or missing.');
-  if (!feed.feedToken || feed.feedToken.length === 0) {
-    return text(401, 'Feed has no active token.');
-  }
-  // Per-feed nonce check — rotation invalidates old tokens.
-  if (typeof payload.subjectId !== 'string' || !samePath(feed, scope, subjectId)) {
-    return text(403, 'Feed metadata does not match token.');
+  if (!feed.feedToken) return text(401, 'Feed has no active token.');
+
+  if (!constantTimeEquals(feed.feedToken, token)) {
+    return text(401, 'Bad token.');
   }
 
   const householdId = feed.householdId;
@@ -122,26 +105,25 @@ async function handleFeed(
   });
 
   const etag = await sha256Hex(ics);
+  const cacheControl = `public, max-age=${CACHE_SECONDS}`;
 
-  // 304 short-circuit for unchanged content.
+  // 304 short-circuit for unchanged content. Per RFC 7232 §4.1, mirror the
+  // cache headers the 200 would have set so downstream caches stay aligned.
   if (c.req.header('if-none-match') === `"${etag}"`) {
-    return new Response(null, { status: 304, headers: { ETag: `"${etag}"` } });
+    return new Response(null, {
+      status: 304,
+      headers: { ETag: `"${etag}"`, 'Cache-Control': cacheControl },
+    });
   }
 
   return new Response(ics, {
     status: 200,
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
-      'Cache-Control': `public, max-age=${CACHE_SECONDS}`,
+      'Cache-Control': cacheControl,
       ETag: `"${etag}"`,
     },
   });
-}
-
-function samePath(feed: CalendarFeedSettings, scope: FeedScope, subjectId: string): boolean {
-  if (feed.scope !== scope) return false;
-  if (scope === 'user') return feed.userId === subjectId;
-  return feed.householdId === subjectId;
 }
 
 function text(status: number, body: string): Response {
@@ -149,6 +131,16 @@ function text(status: number, body: string): Response {
     status,
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });
+}
+
+/** Length-safe comparison that always walks both strings to mitigate timing leaks. */
+function constantTimeEquals(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
 }
 
 async function sha256Hex(s: string): Promise<string> {
@@ -161,14 +153,18 @@ async function sha256Hex(s: string): Promise<string> {
 
 // ─── D1 lookups ────────────────────────────────────────────────────────
 
-async function fetchFeed(
+async function fetchFeedBySubject(
   db: NonNullable<Env['DB']>,
-  feedId: string,
+  scope: FeedScope,
+  subjectId: string,
 ): Promise<CalendarFeedSettings | undefined> {
   const spec = TABLES.calendarFeedSettings;
+  const subjectColumn = scope === 'user' ? 'user_id' : 'household_id';
   const row = await db
-    .prepare(`SELECT * FROM ${spec.table} WHERE id = ? LIMIT 1`)
-    .bind(feedId)
+    .prepare(
+      `SELECT * FROM ${spec.table} WHERE scope = ? AND ${subjectColumn} = ? LIMIT 1`,
+    )
+    .bind(scope, subjectId)
     .first<Record<string, unknown>>();
   return row ? (decodeRow(spec, row) as CalendarFeedSettings) : undefined;
 }
