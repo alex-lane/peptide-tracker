@@ -16,6 +16,7 @@ import {
 import { HouseholdBootstrap } from '@/app/HouseholdBootstrap';
 import { useActive } from '@/app/useActive';
 import { listUsersInHousehold } from '@/app/active-household';
+import { Pill } from '@/components/ui';
 import { LogDoseModal } from './LogDoseModal';
 import { rolloverMissedSchedules } from './missedRollover';
 import { computeInventoryWarnings } from './inventoryWarnings';
@@ -136,9 +137,9 @@ export function TodayPage() {
         <button
           type="button"
           onClick={() => setManualLogOpen(true)}
-          className="flex items-center gap-1 rounded-md bg-ink-300 px-3 py-2 text-sm text-paper-100 hover:bg-ink-200"
+          className="flex items-center gap-1 rounded-md bg-accent-primary px-3 py-2 text-sm text-white shadow-glow transition-colors hover:bg-accent-primary-hover"
         >
-          <Plus className="h-4 w-4" /> Log dose
+          <Plus className="h-4 w-4" strokeWidth={2.5} /> Log dose
         </button>
       </header>
 
@@ -294,9 +295,14 @@ function Bucket({
   itemNameById: Map<string, string>;
   onTap: (s: DoseSchedule) => void;
 }) {
+  const tone = variant === 'missed' ? 'danger' : variant === 'today' ? 'primary' : 'cyan';
   return (
     <div>
-      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-100">{label}</p>
+      <div className="mb-2">
+        <Pill tone={tone} dot>
+          {label} · {schedules.length}
+        </Pill>
+      </div>
       <ul className="ruled-y rounded-md border border-paper-300">
         {schedules.map((s) => (
           <li key={s.id} className="flex items-center gap-2 px-3 py-2">

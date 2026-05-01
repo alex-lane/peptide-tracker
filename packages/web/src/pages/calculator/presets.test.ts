@@ -28,7 +28,7 @@ describe('calculator presets', () => {
       diluentType: 'bac_water',
       lastDoseAmount: '250',
       lastDoseUnit: 'mcg',
-      syringeScale: 'U-100',
+      syringeCapacityUnits: 100,
       savedAt: '2026-04-30T00:00:00.000Z',
     });
     const got = await readPreset(db, 'item-1');
@@ -48,7 +48,7 @@ describe('calculator presets', () => {
       diluentType: 'bac_water',
       lastDoseAmount: '250',
       lastDoseUnit: 'mcg',
-      syringeScale: 'U-100',
+      syringeCapacityUnits: 100,
       savedAt: '2026-04-30T00:00:00.000Z',
     });
     await writePreset(db, {
@@ -59,7 +59,7 @@ describe('calculator presets', () => {
       diluentType: 'bac_water',
       lastDoseAmount: '2',
       lastDoseUnit: 'mg',
-      syringeScale: 'U-100',
+      syringeCapacityUnits: 100,
       savedAt: '2026-04-30T00:00:00.000Z',
     });
     expect((await readPreset(db, 'a'))?.vialMass).toBe('5');
@@ -75,7 +75,7 @@ describe('calculator presets', () => {
       diluentType: 'bac_water',
       lastDoseAmount: '250',
       lastDoseUnit: 'mcg',
-      syringeScale: 'U-100',
+      syringeCapacityUnits: 100,
       savedAt: '2026-04-30T00:00:00.000Z',
     });
     await deletePreset(db, 'a');

@@ -14,7 +14,11 @@ import {
   mlToInsulinUnitsU100,
 } from './units.js';
 
-export type SyringeScale = 'U-100' | 'U-40' | 'U-500';
+/**
+ * Total-capacity syringe (all U-100 calibrated). 30u = 0.3 mL max,
+ * 50u = 0.5 mL max, 100u = 1 mL max. Standard BD Ultra-Fine sizes.
+ */
+export type SyringeCapacityUnits = 30 | 50 | 100;
 
 export interface DoseInput {
   /** Numeric dose value in `doseUnit`. */
@@ -22,8 +26,8 @@ export interface DoseInput {
   readonly doseUnit: MassUnit;
   /** Concentration of the prepared solution in mcg/mL. */
   readonly concentrationMcgPerMl: McgPerMl;
-  /** Default U-100; non-U-100 surfaces a warning. */
-  readonly syringeScale?: SyringeScale;
+  /** Total syringe capacity in U-100 units (30 / 50 / 100). Defaults to 100. */
+  readonly syringeCapacityUnits?: SyringeCapacityUnits;
 }
 
 export interface DoseResult {
@@ -37,7 +41,10 @@ export interface DoseResult {
 }
 
 export interface DoseWarning {
-  readonly code: 'NON_U100_SYRINGE' | 'VOLUME_BELOW_PRECISION' | 'VOLUME_ABOVE_TYPICAL';
+  readonly code:
+    | 'DOSE_EXCEEDS_SYRINGE_CAPACITY'
+    | 'VOLUME_BELOW_PRECISION'
+    | 'VOLUME_ABOVE_TYPICAL';
   readonly message: string;
 }
 
@@ -61,10 +68,13 @@ export function computeDoseVolume(input: DoseInput): DoseResult {
   const units = mlToInsulinUnitsU100(volume);
 
   const warnings: DoseWarning[] = [];
-  if (input.syringeScale && input.syringeScale !== 'U-100') {
+  const capacity: SyringeCapacityUnits = input.syringeCapacityUnits ?? 100;
+  // capacity (units) × ML_PER_INSULIN_UNIT_U100 = capacity in mL.
+  const capacityMl = capacity * ML_PER_INSULIN_UNIT_U100;
+  if ((volume as number) > capacityMl) {
     warnings.push({
-      code: 'NON_U100_SYRINGE',
-      message: `Insulin scale ${input.syringeScale} differs from default U-100. Recompute units against ${input.syringeScale} gradation before drawing.`,
+      code: 'DOSE_EXCEEDS_SYRINGE_CAPACITY',
+      message: `Computed volume ${roundTo(volume as number, 3)} mL exceeds the ${capacity}u syringe (${capacityMl} mL max). Pick a larger syringe or split the dose.`,
     });
   }
   if ((volume as number) < VOLUME_PRECISION_FLOOR_ML) {

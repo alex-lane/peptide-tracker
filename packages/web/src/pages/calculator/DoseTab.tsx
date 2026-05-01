@@ -10,6 +10,7 @@ import { getDb } from '@/db';
 import type { InventoryBatch, InventoryItem } from '@/db';
 import { ResultTile, ShowYourWork } from './Result';
 import { readPreset, writePreset } from './presets';
+import { SyringeVisualization } from './SyringeVisualization';
 
 interface InferredConcentration {
   mcgPerMl: number;
@@ -28,7 +29,7 @@ const KEY_DOSE_MAX = 'calc.dose.max.v1.';
 export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props) {
   const [doseAmount, setDoseAmount] = useState('');
   const [doseUnit, setDoseUnit] = useState<'mcg' | 'mg' | 'g' | 'IU'>('mcg');
-  const [syringeScale, setSyringeScale] = useState<'U-100' | 'U-40' | 'U-500'>('U-100');
+  const [syringeCapacityUnits, setSyringeCapacityUnits] = useState<30 | 50 | 100>(100);
 
   // Manual concentration is a fallback when there's no product OR the
   // selected product has no reconstituted batch and no saved preset.
@@ -118,7 +119,7 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
       if (preset) {
         setDoseAmount(preset.lastDoseAmount);
         setDoseUnit(preset.lastDoseUnit);
-        setSyringeScale(preset.syringeScale);
+        setSyringeCapacityUnits(preset.syringeCapacityUnits);
       } else if (
         item.defaultUnitOfDose &&
         (item.defaultUnitOfDose === 'mcg' ||
@@ -158,14 +159,14 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
         doseAmount: amount,
         doseUnit,
         concentrationMcgPerMl: mcgPerMl(concentrationMcgPerMl),
-        syringeScale,
+        syringeCapacityUnits,
       });
       return { ok: true as const, data: out };
     } catch (err) {
       if (err instanceof MathError) return { ok: false as const, error: err.message };
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
     }
-  }, [doseAmount, doseUnit, concentrationMcgPerMl, syringeScale]);
+  }, [doseAmount, doseUnit, concentrationMcgPerMl, syringeCapacityUnits]);
 
   // "result > 2× previous max" surface from PLAN §7.8.
   const previousMaxMcg = useMemo(() => {
@@ -212,7 +213,7 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
       diluentType: existing?.diluentType ?? 'bac_water',
       lastDoseAmount: doseAmount,
       lastDoseUnit: doseUnit,
-      syringeScale,
+      syringeCapacityUnits,
       savedAt: new Date().toISOString(),
     });
   }
@@ -265,29 +266,39 @@ export function DoseTab({ items, batches, selectedItemId, onSelectItem }: Props)
       </div>
 
       <fieldset className="text-sm">
-        <legend className="block font-medium">Syringe scale</legend>
+        <legend className="block font-medium">Syringe size</legend>
         <div className="mt-2 flex gap-1">
-          {(['U-100', 'U-40', 'U-500'] as const).map((s) => (
+          {([30, 50, 100] as const).map((s) => (
             <button
               key={s}
               type="button"
-              onClick={() => setSyringeScale(s)}
-              aria-pressed={syringeScale === s}
+              onClick={() => setSyringeCapacityUnits(s)}
+              aria-pressed={syringeCapacityUnits === s}
               className={
-                syringeScale === s
-                  ? 'rounded-full bg-ink-300 px-3 py-1.5 text-xs text-paper-100'
-                  : 'rounded-full bg-paper-200 px-3 py-1.5 text-xs text-ink-200 hover:bg-paper-300'
+                syringeCapacityUnits === s
+                  ? 'rounded-full bg-accent-primary px-3 py-1.5 text-xs text-white shadow-glow'
+                  : 'rounded-full bg-bg-elevated px-3 py-1.5 text-xs text-text-secondary hover:bg-border-subtle'
               }
             >
-              {s}
+              {s}u
+              <span className="ml-1 text-[10px] text-text-muted">
+                ({(s * 0.01).toFixed(1)} mL)
+              </span>
             </button>
           ))}
         </div>
-        <span className="mt-1 block text-xs text-ink-100">
-          Insulin-syringe scale on the syringe you're drawing with. U-100 is by far the most common
-          for peptide use; non-U-100 surfaces a warning.
+        <span className="mt-1 block text-xs text-text-muted">
+          Total-capacity insulin syringe (all U-100 calibration). 30u = 0.3 mL, 50u = 0.5 mL,
+          100u = 1 mL.
         </span>
       </fieldset>
+
+      {result?.ok && (
+        <SyringeVisualization
+          capacityUnits={syringeCapacityUnits}
+          fillUnits={result.data.insulinUnitsU100Display}
+        />
+      )}
 
       {result?.ok ? (
         <ResultTile

@@ -40,14 +40,32 @@ describe('computeDoseVolume', () => {
     expect(r.formula).toContain('10 units');
   });
 
-  it('warns on non-U100 syringe scale', () => {
-    const r = computeDoseVolume({
+  it('warns when dose volume exceeds the chosen syringe capacity', () => {
+    // 250 mcg @ 2,500 mcg/mL = 0.1 mL = 10u — fits in any size, no warning.
+    const small = computeDoseVolume({
       doseAmount: 250,
       doseUnit: 'mcg',
       concentrationMcgPerMl: mcgPerMl(2500),
-      syringeScale: 'U-40',
+      syringeCapacityUnits: 30,
     });
-    expect(r.warnings.some((w) => w.code === 'NON_U100_SYRINGE')).toBe(true);
+    expect(small.warnings.some((w) => w.code === 'DOSE_EXCEEDS_SYRINGE_CAPACITY')).toBe(false);
+
+    // 1 mg @ 2,500 mcg/mL = 0.4 mL = 40u — fits 50u and 100u, NOT 30u.
+    const overflow = computeDoseVolume({
+      doseAmount: 1,
+      doseUnit: 'mg',
+      concentrationMcgPerMl: mcgPerMl(2500),
+      syringeCapacityUnits: 30,
+    });
+    expect(overflow.warnings.some((w) => w.code === 'DOSE_EXCEEDS_SYRINGE_CAPACITY')).toBe(true);
+
+    const fitsFifty = computeDoseVolume({
+      doseAmount: 1,
+      doseUnit: 'mg',
+      concentrationMcgPerMl: mcgPerMl(2500),
+      syringeCapacityUnits: 50,
+    });
+    expect(fitsFifty.warnings.some((w) => w.code === 'DOSE_EXCEEDS_SYRINGE_CAPACITY')).toBe(false);
   });
 
   it('warns when volume is below insulin-syringe precision', () => {

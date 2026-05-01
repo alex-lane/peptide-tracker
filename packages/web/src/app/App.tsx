@@ -10,12 +10,15 @@ import { CalculatorPage } from '@/pages/calculator/CalculatorPage';
 import { InsightsPage } from '@/pages/insights/InsightsPage';
 import { ConsentGate } from './ConsentGate';
 import { ErrorBoundary } from './ErrorBoundary';
+import { useTheme } from './useTheme';
 
 function guarded(scope: string, node: ReactNode): ReactNode {
   return <ErrorBoundary scope={scope}>{node}</ErrorBoundary>;
 }
 
 export function App() {
+  // Side-effect-only hook call — applies the persisted theme to <html> on mount.
+  useTheme();
   return (
     <ConsentGate>
       <Routes>

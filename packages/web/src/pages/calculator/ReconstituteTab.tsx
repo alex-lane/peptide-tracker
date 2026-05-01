@@ -80,7 +80,7 @@ export function ReconstituteTab({ items, selectedItemId, onSelectItem }: Props) 
       diluentType,
       lastDoseAmount: '',
       lastDoseUnit: 'mcg',
-      syringeScale: 'U-100',
+      syringeCapacityUnits: 100,
       savedAt: new Date().toISOString(),
     });
     setSavedAt(new Date().toISOString());

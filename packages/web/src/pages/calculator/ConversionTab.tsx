@@ -8,6 +8,7 @@ import {
   mlToInsulinUnitsU100,
   parseDecimalInput,
 } from '@peptide/domain';
+import { SyringeVisualization } from './SyringeVisualization';
 
 type Mode = 'mass' | 'volume';
 
@@ -128,6 +129,7 @@ function MassConverter() {
 function VolumeConverter() {
   const [value, setValue] = useState('');
   const [unit, setUnit] = useState<'mL' | 'units'>('mL');
+  const [capacityUnits, setCapacityUnits] = useState<30 | 50 | 100>(100);
 
   const parsed = useMemo<
     { ok: true; ml: number; units: number } | { ok: false; error: string } | null
@@ -172,23 +174,46 @@ function VolumeConverter() {
           </select>
         </label>
       </div>
-      {parsed && parsed.ok ? (
-        <div className="grid grid-cols-2 gap-2">
-          <ConversionChip label="mL" value={formatNum(parsed.ml)} highlighted={unit === 'mL'} />
-          <ConversionChip
-            label="U-100 units"
-            value={formatNum(parsed.units)}
-            highlighted={unit === 'units'}
-          />
+      <fieldset className="text-sm">
+        <legend className="block font-medium">Show on syringe</legend>
+        <div className="mt-2 flex gap-1">
+          {([30, 50, 100] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setCapacityUnits(s)}
+              aria-pressed={capacityUnits === s}
+              className={
+                capacityUnits === s
+                  ? 'rounded-full bg-accent-primary px-3 py-1.5 text-xs text-white shadow-glow'
+                  : 'rounded-full bg-bg-elevated px-3 py-1.5 text-xs text-text-secondary hover:bg-border-subtle'
+              }
+            >
+              {s}u ({(s * 0.01).toFixed(1)} mL)
+            </button>
+          ))}
         </div>
+      </fieldset>
+      {parsed && parsed.ok ? (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <ConversionChip label="mL" value={formatNum(parsed.ml)} highlighted={unit === 'mL'} />
+            <ConversionChip
+              label="U-100 units"
+              value={formatNum(parsed.units)}
+              highlighted={unit === 'units'}
+            />
+          </div>
+          <SyringeVisualization capacityUnits={capacityUnits} fillUnits={parsed.units} />
+        </>
       ) : parsed && !parsed.ok ? (
         <p className="text-sm text-warn">{parsed.error}</p>
       ) : (
-        <p className="text-sm text-ink-100">Enter an amount to see conversions.</p>
+        <p className="text-sm text-text-secondary">Enter an amount to see conversions.</p>
       )}
-      <p className="text-xs text-ink-100">
+      <p className="text-xs text-text-muted">
         Constant: 1 U-100 unit = <span className="num">{ML_PER_INSULIN_UNIT_U100}</span> mL. U-40
-        and U-500 syringes use different gradations and are not converted here.
+        and U-500 syringes use different concentration calibrations and aren't converted here.
       </p>
     </>
   );

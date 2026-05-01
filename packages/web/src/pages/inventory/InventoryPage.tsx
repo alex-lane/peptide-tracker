@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import type { InventoryItem } from '@/db';
 import { useActive } from '@/app/useActive';
 import { Modal } from '@/components/Modal';
+import { ProductIcon } from '@/components/ProductIcon';
 import { ItemForm } from './ItemForm';
 import { ItemDetailModal } from './ItemDetailModal';
 import { FillBar } from './fill-bar';
@@ -66,9 +67,9 @@ export function InventoryPage() {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="flex items-center gap-1 rounded-md bg-ink-300 px-3 py-2 text-sm text-paper-100 hover:bg-ink-200"
+          className="flex items-center gap-1 rounded-md bg-accent-primary px-3 py-2 text-sm text-white shadow-glow transition-colors hover:bg-accent-primary-hover"
         >
-          <Plus className="h-4 w-4" /> Add
+          <Plus className="h-4 w-4" strokeWidth={2.5} /> Add
         </button>
       </header>
 
@@ -142,12 +143,13 @@ function InventoryListRow({ row, onOpen }: { row: InventoryRow; onOpen: () => vo
       <button
         type="button"
         onClick={onOpen}
-        className="block w-full px-3 py-3 text-left transition-colors duration-120 hover:bg-paper-200"
+        className="block w-full px-3 py-3 text-left transition-colors duration-120 hover:bg-bg-elevated"
       >
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-3">
+          <ProductIcon form={item.form} />
           <div className="min-w-0 flex-1">
             <p className="text-base">{item.name}</p>
-            <p className="text-xs text-ink-100">
+            <p className="text-xs text-text-muted">
               {labelForm(item.form)} · {batches.length} batch{batches.length === 1 ? '' : 'es'}
             </p>
             {activeBatch && (

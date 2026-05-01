@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Activity } from 'lucide-react';
 import { getDb } from '@/db';
 import { useSyncStatus } from '@/sync/useSyncStatus';
 import { useActive } from '@/app/useActive';
@@ -19,18 +20,25 @@ export function TopBar() {
   const dotLabel = describeStatus(status);
 
   return (
-    <header className="sticky top-0 z-10 border-b border-paper-300 bg-paper-100/95 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-border-subtle bg-bg-base/90 backdrop-blur">
       <div className="mx-auto flex w-full max-w-screen-md items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="font-display text-base">Peptide Tracker</span>
-          <span className="text-xs text-ink-100">{household?.name ?? 'household'}</span>
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-accent-primary/15 text-accent-primary">
+            <Activity className="h-4 w-4" aria-hidden />
+          </span>
+          <div className="flex flex-col leading-tight">
+            <span className="font-display text-sm font-semibold tracking-tight">
+              Peptide Tracker
+            </span>
+            <span className="text-[11px] text-text-muted">{household?.name ?? 'household'}</span>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <Link
             to="/settings"
             aria-label={`Sync status: ${dotLabel}`}
             title={dotLabel}
-            className="flex items-center gap-1.5 text-xs text-ink-100"
+            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-text-secondary hover:bg-bg-elevated"
           >
             <span
               className={cn(
@@ -49,7 +57,7 @@ export function TopBar() {
 }
 
 function statusDotClass(status: ReturnType<typeof useSyncStatus>): string {
-  if (!status.configured) return 'bg-ink-50';
+  if (!status.configured) return 'bg-text-muted';
   if (!status.online) return 'bg-warn';
   if (status.outboxDepth > 0) return 'bg-warn';
   return 'bg-success';

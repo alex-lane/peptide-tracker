@@ -1,56 +1,85 @@
 import type { Config } from 'tailwindcss';
 
-// Lab-notebook visual identity per autoplan TD1.
-// Serif display + monospace numerics + paper-toned backgrounds, no card shadows.
+// Dark-first redesign palette. Inspired by saturated fintech UIs:
+// near-black bg, vibrant purple primary, pink + cyan accents, status
+// semantics retained from the M11 baseline.
+//
+// `paper-*` and `ink-*` are kept as legacy aliases so existing screens
+// keep compiling untouched during the UI-M2 refactor pass.
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Paper / ink palette
+        // ─── New token system ───────────────────────────────────────────
+        bg: {
+          base: '#0B0B14',
+          surface: '#13131F',
+          elevated: '#1A1A2A',
+        },
+        border: {
+          subtle: '#262638',
+          strong: '#3A3A52',
+        },
+        text: {
+          primary: '#F0F0F5',
+          secondary: '#9090A8',
+          muted: '#5A5A70',
+        },
+        accent: {
+          primary: '#7C5CFF',
+          'primary-hover': '#9279FF',
+          'primary-glow': 'rgba(124, 92, 255, 0.35)',
+          pink: '#F472B6',
+          cyan: '#22D3EE',
+        },
+
+        // ─── Legacy aliases (paper / ink) ──────────────────────────────
+        // Old screens reference these; map them to the new tokens so the
+        // theme switch doesn't ripple. Removed once UI-M2 lands and every
+        // primitive uses the new tokens directly.
         paper: {
-          50: '#FBF8F1',
-          100: '#F8F4EC',
-          200: '#F0E9D8',
-          300: '#E5DAC0',
+          50: '#1A1A2A', // → bg.elevated
+          100: '#13131F', // → bg.surface
+          200: '#1A1A2A', // → bg.elevated
+          300: '#262638', // → border.subtle
         },
         ink: {
-          50: '#5C5851',
-          100: '#3F3C36',
-          200: '#2A2823',
-          300: '#1C1A17',
+          50: '#9090A8', // → text.secondary
+          100: '#9090A8', // → text.secondary
+          200: '#F0F0F5', // → text.primary
+          300: '#F0F0F5', // → text.primary
         },
-        // Semantic
+
+        // ─── Semantic / status ─────────────────────────────────────────
         warn: {
-          DEFAULT: '#B26A00',
-          fg: '#FFFBF2',
+          DEFAULT: '#F59E0B',
+          fg: '#0B0B14',
         },
         success: {
-          DEFAULT: '#2E5E3E',
-          fg: '#F2FBF4',
+          DEFAULT: '#34D399',
+          fg: '#0B0B14',
         },
         danger: {
-          DEFAULT: '#9B2C2C',
-          fg: '#FFF5F5',
+          DEFAULT: '#F43F5E',
+          fg: '#0B0B14',
         },
-        // Status tokens (for dose schedules / sync state)
         status: {
-          pending: '#7A6A4F',
-          logged: '#2E5E3E',
-          missed: '#9B2C2C',
-          synced: '#5C5851',
-          offline: '#B26A00',
+          pending: '#9090A8',
+          logged: '#34D399',
+          missed: '#F43F5E',
+          synced: '#22D3EE',
+          offline: '#F59E0B',
         },
       },
       fontFamily: {
-        // Display: humanist serif (loaded via @import in index.css for now)
-        display: ['Source Serif 4', 'Source Serif Pro', 'Lora', 'Georgia', 'serif'],
+        // Inter unifies display + body; JetBrains Mono stays for numerics.
+        display: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['JetBrains Mono', 'IBM Plex Mono', 'Menlo', 'monospace'],
       },
       fontSize: {
-        // 13/15/17/22/28 + mono-14
         xs: ['13px', '18px'],
         sm: ['15px', '22px'],
         base: ['17px', '26px'],
@@ -59,7 +88,6 @@ export default {
         num: ['14px', '20px'],
       },
       spacing: {
-        // 4-base, opinionated set: 4 / 8 / 12 / 16 / 24 / 32
         '0.5': '2px',
         '1': '4px',
         '2': '8px',
@@ -71,17 +99,20 @@ export default {
         '16': '64px',
       },
       borderRadius: {
-        // Opinionated subset: 0 / 4 / 12
         none: '0',
         sm: '4px',
-        DEFAULT: '4px',
-        md: '12px',
-        lg: '12px',
+        DEFAULT: '8px',
+        md: '10px',
+        lg: '14px',
+        xl: '20px',
         full: '9999px',
       },
       boxShadow: {
-        // Lab-notebook: NO shadows. Separators only.
         none: 'none',
+        glow: '0 0 24px rgba(124, 92, 255, 0.35)',
+        'glow-pink': '0 0 24px rgba(244, 114, 182, 0.30)',
+        'glow-cyan': '0 0 24px rgba(34, 211, 238, 0.30)',
+        card: '0 1px 0 rgba(255, 255, 255, 0.03) inset',
       },
       transitionDuration: {
         '120': '120ms',

@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    color-scheme: light dark;
+    color-scheme: dark light;
   }
 
   html,
@@ -13,9 +13,18 @@
     height: 100%;
   }
 
+  /* Dark-first body style. Light mode is opted into via .light on <html>;
+     ConsentGate / theme toggle writes that class. */
   body {
+    background-color: theme('colors.bg.base');
+    color: theme('colors.text.primary');
     font-family: theme('fontFamily.sans');
     font-feature-settings: 'cv11', 'ss01';
+  }
+
+  html.light body {
+    background-color: theme('colors.paper.100', #F8F4EC);
+    color: theme('colors.ink.300', #1C1A17);
   }
 
   h1,
@@ -23,6 +32,7 @@
   h3 {
     font-family: theme('fontFamily.display');
     font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   /* Numeric values render in mono — wrap dose figures in <span class="num">…</span> */
@@ -32,21 +42,16 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Lab-notebook: ruled separators replace card shadows */
+  /* Lab-notebook ruled separator. Stays useful in dark too. */
   .ruled-y > * + * {
-    border-top: 1px solid theme('colors.paper.300');
+    border-top: 1px solid theme('colors.border.subtle');
   }
 
-  /* Touch target floor for kitchen-glove use on calculator inputs */
   .touch-lg {
     min-height: 56px;
   }
 
-  /* Keyboard focus rings — applied uniformly so screen-reader + keyboard
-     users never lose track of focus. Uses :focus-visible so mouse clicks
-     don't paint a ring. `currentColor` so the outline adapts to the active
-     theme (ink-300 text on light, paper-100 text on dark) and never matches
-     the background. */
+  /* Keyboard focus rings — currentColor adapts to theme. */
   a:focus-visible,
   button:focus-visible,
   input:focus-visible,
@@ -56,41 +61,64 @@
   [role='tab']:focus-visible,
   [role='menuitem']:focus-visible,
   summary:focus-visible {
-    outline: 2px solid currentColor;
+    outline: 2px solid theme('colors.accent.primary');
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: 6px;
+  }
+
+  /* Inputs adopt dark surface by default (overridable per-field). */
+  input,
+  select,
+  textarea {
+    background-color: theme('colors.bg.elevated');
+    color: theme('colors.text.primary');
+    border-color: theme('colors.border.strong');
+  }
+  html.light input,
+  html.light select,
+  html.light textarea {
+    background-color: #FBF8F1;
+    color: theme('colors.ink.300', #1C1A17);
+    border-color: #E5DAC0;
+  }
+
+  /* Selection in dark mode shouldn't disappear into the bg. */
+  ::selection {
+    background: theme('colors.accent.primary');
+    color: theme('colors.text.primary');
   }
 }
 
-/* Dark mode: deep-ink ground, parchment ink */
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: theme('colors.ink.300');
-    color: theme('colors.paper.100');
+@layer utilities {
+  /* Subtle card lift on hover for tappable rows. */
+  .hover-lift {
+    transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 120ms ease,
+      background-color 120ms ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-1px);
+    border-color: theme('colors.border.strong');
   }
 }
 
-/* Print stylesheet: strip app chrome and interactive controls so the
-   browser's "Save as PDF" produces a clean report. Used by Insights →
-   Print as PDF. */
+/* Print stylesheet — used by Insights → Print as PDF. Forces light bg
+   regardless of theme so PDFs aren't an ink-flood. */
 @media print {
-  body {
-    background: white;
-    color: black;
+  body,
+  html.light body {
+    background: white !important;
+    color: black !important;
   }
-  /* Hide app chrome: top bar, bottom nav, footer disclaimer, modals. */
   header[class*='sticky'],
   nav[aria-label='Primary'],
   footer[aria-label='Disclaimer'],
   [role='dialog'] {
     display: none !important;
   }
-  /* Hide anything explicitly opted out of print. */
   .print\:hidden {
     display: none !important;
   }
-  /* Strip interactive controls. The dev wraps form widgets in <input>,
-     <select>, <textarea>, and <button> — none are useful on paper. */
   input,
   select,
   textarea,
@@ -101,13 +129,13 @@
     max-width: none !important;
     padding: 0 !important;
   }
-  /* Avoid splitting cards across pages. */
   section > div {
     break-inside: avoid;
   }
-  /* Remove background tints on cards so toner doesn't ghost. */
+  [class*='bg-bg-'],
   [class*='bg-paper'],
   [class*='bg-ink'] {
     background: transparent !important;
+    color: black !important;
   }
 }
