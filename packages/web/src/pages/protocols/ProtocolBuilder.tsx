@@ -14,7 +14,13 @@ import {
   type UserProfile,
 } from '@/db';
 import { Modal } from '@/components/Modal';
-import { describeRrule, deviceTimeZone, recognizeRrule, rrulePresetToString } from './rrule';
+import {
+  describeRrule,
+  deviceTimeZone,
+  isValidRruleForBuilder,
+  recognizeRrule,
+  rrulePresetToString,
+} from './rrule';
 import { refreshSchedulesForProtocol } from './scheduleExpansion';
 
 interface DraftItem {
@@ -301,7 +307,8 @@ function stepIsValid(
         Number(i.doseAmount) > 0 &&
         i.rrule.trim() &&
         /^\d{2}:\d{2}$/.test(i.localStartTime) &&
-        (!i.cycleOn || (Number(i.cycleOn) > 0 && Number(i.cycleOff) >= 0)),
+        (!i.cycleOn || (Number(i.cycleOn) > 0 && Number(i.cycleOff) >= 0)) &&
+        isValidRruleForBuilder(i.rrule, i.timezone, i.localStartTime),
     );
   }
   return true;
@@ -596,6 +603,11 @@ function ItemForm({
               className="mt-1 w-full rounded-md border border-paper-300 bg-paper-50 px-2 py-1 font-mono"
             />
             <span className="mt-1 block text-ink-100">{describeRrule(draft.rrule)}</span>
+            {!isValidRruleForBuilder(draft.rrule, draft.timezone, draft.localStartTime) && (
+              <span className="mt-1 block text-warn">
+                RRULE doesn't parse against this timezone — fix before activating.
+              </span>
+            )}
           </label>
         )}
       </fieldset>

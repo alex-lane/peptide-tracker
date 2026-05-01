@@ -89,3 +89,34 @@ export function deviceTimeZone(): string {
     return 'UTC';
   }
 }
+
+import { expandSchedule } from '@peptide/domain';
+
+/**
+ * Validate that an (rrule, tzid, localStartTime) triple parses cleanly. Runs a
+ * tiny one-day expansion against today; we only care that it doesn't throw.
+ */
+export function isValidRruleForBuilder(
+  rrule: string,
+  tzid: string,
+  localStartTime: string,
+): boolean {
+  if (!rrule.trim()) return false;
+  if (!/^\d{2}:\d{2}$/.test(localStartTime)) return false;
+  const start = new Date();
+  const end = new Date(start.getTime() + 24 * 3600_000);
+  try {
+    expandSchedule({
+      rrule,
+      tzid,
+      localStartDate: start.toISOString().slice(0, 10),
+      localStartTime,
+      windowStart: start,
+      windowEnd: end,
+      maxOccurrences: 1,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}

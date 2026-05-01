@@ -41,7 +41,7 @@ export async function refreshSchedulesForProtocol(
 ): Promise<RefreshResult> {
   if (!protocol.active) {
     // Inactive protocol → wipe its pending rows and return.
-    return wipePendingForProtocol(db, items);
+    return wipePendingForProtocol(db, items, protocol.householdId);
   }
 
   const now = args.now ?? new Date();
@@ -63,7 +63,7 @@ export async function refreshSchedulesForProtocol(
   }
 
   if (windowEnd.getTime() <= windowStart.getTime()) {
-    return wipePendingForProtocol(db, items);
+    return wipePendingForProtocol(db, items, protocol.householdId);
   }
 
   // Compute desired (protocolItemId, scheduledFor) set.
@@ -178,6 +178,7 @@ export async function refreshSchedulesForProtocol(
 async function wipePendingForProtocol(
   db: PeptideDb,
   items: readonly ProtocolItem[],
+  householdId?: string,
 ): Promise<RefreshResult> {
   if (items.length === 0) {
     return { inserted: 0, removed: 0, kept: 0, perItem: [] };
@@ -185,8 +186,10 @@ async function wipePendingForProtocol(
   let removed = 0;
   await db.transaction('rw', db.doseSchedules, db.outbox, async () => {
     const itemIds = new Set(items.map((i) => i.id));
-    const all = await db.doseSchedules.toArray();
-    for (const s of all) {
+    const scoped = householdId
+      ? await db.doseSchedules.where('householdId').equals(householdId).toArray()
+      : await db.doseSchedules.toArray();
+    for (const s of scoped) {
       if (
         !s.deletedAt &&
         s.protocolItemId &&
