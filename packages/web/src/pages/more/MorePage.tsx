@@ -14,8 +14,13 @@ const items: MoreItem[] = [
     to: '/more/calculator',
     available: true,
   },
+  {
+    label: 'Insights',
+    desc: 'Adherence, burn-down, custom metrics, exports',
+    to: '/more/insights',
+    available: true,
+  },
   { label: 'Settings', desc: 'Local data, export, import', to: '/settings', available: true },
-  { label: 'Insights', desc: 'Adherence, burn-down, custom metrics (M10)', available: false },
   { label: 'Education', desc: 'Reference notes for tracked items', available: false },
 ];
 
