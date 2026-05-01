@@ -114,13 +114,36 @@ describe('computeBurndown', () => {
     expect(out.dosesApplied).toBe(1);
   });
 
-  it('includes ad-hoc schedules without a protocol item', () => {
+  it('includes ad-hoc schedules without a protocol item when this is the only batch', () => {
     const out = computeBurndown({
       batch: makeBatch(),
       schedules: [makeSchedule(0, { protocolItemId: undefined })],
       protocolItems: [],
     });
     expect(out.dosesApplied).toBe(1);
+  });
+
+  it('does NOT attribute schedules to a batch when the protocol item has no preferred batch and a sibling exists', () => {
+    // Two batches of the same item, protocol item has no preferredBatchId.
+    // Without disambiguation, the same dose would count against BOTH batches.
+    const out = computeBurndown({
+      batch: makeBatch({ id: 'b1' }),
+      siblingBatches: [makeBatch({ id: 'b2' })],
+      schedules: [makeSchedule(0, { protocolItemId: 'pi1' })],
+      protocolItems: [makeProtocolItem({ id: 'pi1', preferredBatchId: undefined })],
+    });
+    expect(out.dosesApplied).toBe(0);
+    expect(out.reason).toBe('no_schedules');
+  });
+
+  it('attributes ad-hoc schedules only when there is exactly one batch of the item', () => {
+    const out = computeBurndown({
+      batch: makeBatch({ id: 'b1' }),
+      siblingBatches: [makeBatch({ id: 'b2' })],
+      schedules: [makeSchedule(0, { protocolItemId: undefined })],
+      protocolItems: [],
+    });
+    expect(out.dosesApplied).toBe(0);
   });
 
   it('emits a single starting point when there are no relevant schedules', () => {

@@ -242,7 +242,12 @@ function BurndownCard({
   const batchesWithProjections = batches
     .map((b) => ({
       batch: b,
-      result: computeBurndown({ batch: b, schedules, protocolItems }),
+      result: computeBurndown({
+        batch: b,
+        schedules,
+        protocolItems,
+        siblingBatches: batches,
+      }),
     }))
     .filter((x) => x.result.dosesApplied > 0);
 
@@ -328,7 +333,7 @@ function CustomMetricsCard({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="flex items-center gap-1 rounded-md border border-paper-300 px-2 py-1 text-xs text-ink-200 hover:bg-paper-200"
+          className="flex items-center gap-1 rounded-md border border-paper-300 px-2 py-1 text-xs text-ink-200 hover:bg-paper-200 print:hidden"
         >
           <Plus className="h-3 w-3" /> New metric
         </button>
@@ -388,13 +393,19 @@ function MetricRow({
     if (!valueRaw.trim()) return;
     setBusy(true);
     try {
-      const value =
-        metric.type === 'boolean'
-          ? valueRaw.trim().toLowerCase() === 'true' || valueRaw === '1'
-          : metric.type === 'text'
-            ? valueRaw
-            : Number(valueRaw);
-      if (typeof value === 'number' && !Number.isFinite(value)) return;
+      let value: number | boolean | string;
+      if (metric.type === 'boolean') {
+        value = valueRaw.trim().toLowerCase() === 'true' || valueRaw === '1';
+      } else if (metric.type === 'text') {
+        value = valueRaw;
+      } else {
+        const n = Number(valueRaw);
+        if (!Number.isFinite(n)) return;
+        // scale_1_10 is constrained to its declared range so the chart stays
+        // honest. Out-of-range entries are clamped (not rejected) so the
+        // user's intent — "high" / "low" — is preserved.
+        value = metric.type === 'scale_1_10' ? Math.max(1, Math.min(10, n)) : n;
+      }
       await logMetric(getDb(), { householdId, userId, metricId: metric.id, value });
       setValueRaw('');
     } finally {
@@ -426,14 +437,15 @@ function MetricRow({
       {points.length > 0 && metric.type !== 'text' && metric.type !== 'boolean' && (
         <LineChart
           points={points}
+          {...(metric.type === 'scale_1_10' ? { yMin: 1, yMax: 10 } : {})}
           yLabel={metric.unit ?? 'value'}
           className="text-ink-300"
           ariaLabel={`${metric.name} over time`}
         />
       )}
-      <div className="flex gap-2 text-sm">
+      <div className="flex gap-2 text-sm print:hidden">
         <input
-          type={metric.type === 'text' ? 'text' : 'text'}
+          type="text"
           inputMode={metric.type === 'text' ? 'text' : 'decimal'}
           value={valueRaw}
           onChange={(e) => setValueRaw(e.target.value)}

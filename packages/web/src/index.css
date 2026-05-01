@@ -50,3 +50,45 @@
     color: theme('colors.paper.100');
   }
 }
+
+/* Print stylesheet: strip app chrome and interactive controls so the
+   browser's "Save as PDF" produces a clean report. Used by Insights →
+   Print as PDF. */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  /* Hide app chrome: top bar, bottom nav, footer disclaimer, modals. */
+  header[class*='sticky'],
+  nav[aria-label='Primary'],
+  footer[aria-label='Disclaimer'],
+  [role='dialog'] {
+    display: none !important;
+  }
+  /* Hide anything explicitly opted out of print. */
+  .print\:hidden {
+    display: none !important;
+  }
+  /* Strip interactive controls. The dev wraps form widgets in <input>,
+     <select>, <textarea>, and <button> — none are useful on paper. */
+  input,
+  select,
+  textarea,
+  button {
+    display: none !important;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  /* Avoid splitting cards across pages. */
+  section > div {
+    break-inside: avoid;
+  }
+  /* Remove background tints on cards so toner doesn't ghost. */
+  [class*='bg-paper'],
+  [class*='bg-ink'] {
+    background: transparent !important;
+  }
+}

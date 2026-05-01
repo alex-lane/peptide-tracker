@@ -15,6 +15,13 @@ export interface BurndownInput {
   readonly schedules: readonly DoseSchedule[];
   /** Protocol items for the schedules' dose-amount + unit. */
   readonly protocolItems: readonly ProtocolItem[];
+  /**
+   * Other live batches of the same item. Used to disambiguate protocol items
+   * with no `preferredBatchId`: we only attribute their schedules to a batch
+   * when there's exactly one candidate. Pass an empty list (or omit) when
+   * the caller is fine attributing every protocol-item dose to this batch.
+   */
+  readonly siblingBatches?: readonly InventoryBatch[];
   /** Hard cap on look-ahead, days. Defaults to 60. */
   readonly horizonDays?: number;
 }
@@ -42,8 +49,16 @@ export function computeBurndown(input: BurndownInput): BurndownResult {
   const horizonDays = input.horizonDays ?? DEFAULT_HORIZON;
   const protocolItemById = new Map(input.protocolItems.map((p) => [p.id, p]));
 
+  const sameItemBatches = (input.siblingBatches ?? []).filter(
+    (b) => !b.deletedAt && b.itemId === input.batch.itemId && b.id !== input.batch.id,
+  );
   const relevant = input.schedules
-    .filter((s) => !s.deletedAt && s.status === 'pending' && belongsToBatch(s, input.batch, input.protocolItems))
+    .filter(
+      (s) =>
+        !s.deletedAt &&
+        s.status === 'pending' &&
+        belongsToBatch(s, input.batch, input.protocolItems, sameItemBatches),
+    )
     .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
 
   if (relevant.length === 0) {
@@ -95,14 +110,19 @@ function belongsToBatch(
   s: DoseSchedule,
   batch: InventoryBatch,
   items: readonly ProtocolItem[],
+  otherSameItemBatches: readonly InventoryBatch[],
 ): boolean {
   if (s.itemId !== batch.itemId) return false;
-  if (!s.protocolItemId) return true; // ad-hoc schedule for this item
+  // Ad-hoc schedule (no protocol item): attribute it to this batch only when
+  // there are no other candidate batches of the same item, so we don't
+  // double-count the same dose across every batch.
+  if (!s.protocolItemId) return otherSameItemBatches.length === 0;
   const pi = items.find((p) => p.id === s.protocolItemId);
   if (!pi) return false;
-  // Honor preferredBatchId if set; otherwise any batch of the same item is in scope.
-  if (pi.preferredBatchId && pi.preferredBatchId !== batch.id) return false;
-  return true;
+  if (pi.preferredBatchId) return pi.preferredBatchId === batch.id;
+  // No preferred batch: same disambiguation as ad-hoc — only the sole batch
+  // of this item gets the projection.
+  return otherSameItemBatches.length === 0;
 }
 
 function today(): string {
