@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { exportToJson, getDb, importFromJson, type ImportMode } from '@/db';
 import { getEngine, readConfig, writeConfig, type SyncConfig } from '@/sync';
 import { useSyncStatus } from '@/sync/useSyncStatus';
+import { CalendarSettings } from './CalendarSettings';
 
 type Status =
   | { kind: 'idle' }
@@ -213,6 +214,8 @@ export function SettingsPage() {
           </div>
         )}
       </div>
+
+      <CalendarSettings workerUrl={cfg.workerUrl} />
 
       <div className="rounded-md border border-paper-300 p-4 space-y-3">
         <h2 className="text-base">Export</h2>

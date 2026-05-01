@@ -3,6 +3,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from './auth/devAuth.js';
 import { syncRoutes } from './routes/sync.js';
+import { feedRoutes } from './routes/feed.js';
 import type { D1Database } from './db/d1.js';
 import type { Principal } from './tenant.js';
 
@@ -30,6 +31,11 @@ app.get('/health', (c) => {
     version: '0.1.0',
   });
 });
+
+// Feed routes are public — calendar apps subscribe without Cloudflare Access
+// credentials. Authorization is via HMAC-signed `?token=...`. Mounted BEFORE
+// authMiddleware so the route handler sees the request before auth rejects it.
+app.route('/', feedRoutes());
 
 // Everything below requires authentication. authMiddleware sets
 // `c.var.principal` (typed via Hono's `c.get('principal' as never)`).
