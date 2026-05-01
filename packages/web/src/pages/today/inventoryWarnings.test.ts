@@ -79,8 +79,13 @@ describe('computeInventoryWarnings', () => {
     expect(out).toHaveLength(0);
   });
 
-  it('flags low-forecast when remaining quantity is small relative to upcoming demand', () => {
-    const b = makeBatch({ remainingQuantity: 1.5 });
+  it('flags low-forecast for count-form batches when remaining is below 2× upcoming demand', () => {
+    const b = makeBatch({
+      initialQuantityUnit: 'capsules',
+      initialQuantity: 6,
+      remainingQuantity: 5,
+      status: 'in_use',
+    });
     const upcoming = [
       makeSchedule({ scheduledFor: '2026-05-02T08:00:00Z' }),
       makeSchedule({ id: 's2', scheduledFor: '2026-05-03T08:00:00Z' }),
@@ -92,6 +97,18 @@ describe('computeInventoryWarnings', () => {
       now: new Date('2026-05-01T00:00:00Z'),
     });
     expect(out.some((w) => w.kind === 'low_forecast')).toBe(true);
+  });
+
+  it('does not flag low-forecast for injectables (count vs mL is unit-mismatched)', () => {
+    // 2 mL injectable with 1 pending dose: previously fired (2 <= 1*2) but
+    // 1 dose ≈ 0.1 mL, so actually 20 doses of headroom. Should NOT warn.
+    const b = makeBatch({ remainingQuantity: 2 });
+    const out = computeInventoryWarnings({
+      batches: [b],
+      schedules: [makeSchedule({})],
+      now: new Date('2026-05-01T00:00:00Z'),
+    });
+    expect(out.some((w) => w.kind === 'low_forecast')).toBe(false);
   });
 
   it('skips deleted batches', () => {

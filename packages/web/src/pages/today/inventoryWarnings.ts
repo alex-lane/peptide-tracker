@@ -64,12 +64,17 @@ export function computeInventoryWarnings(args: ComputeArgs): InventoryWarning[] 
       }
     }
 
-    // Low-forecast: if upcoming pending doses against this batch consume the
-    // remainder within `lowForecast` days. Since we don't have per-dose
-    // adjustments stored at schedule-time, we approximate: count pending
-    // schedules that point at this batch's protocolItem in the next N days.
-    // (Used only when remainingQuantity is small relative to demand.)
-    if (b.remainingQuantity > 0) {
+    // Low-forecast: count-form batches only (capsules / tablets / sprays /
+    // drops), where 1 dose ≈ 1 batch unit and a count comparison is honest.
+    // Injectables / mass-form batches need real per-dose math — that's what
+    // protocols/depletion.projectDepletion is for; we deliberately don't
+    // re-implement it here.
+    const isCountForm =
+      b.initialQuantityUnit === 'capsules' ||
+      b.initialQuantityUnit === 'tablets' ||
+      b.initialQuantityUnit === 'sprays' ||
+      b.initialQuantityUnit === 'drops';
+    if (isCountForm && b.remainingQuantity > 0) {
       const horizon = new Date(now.getTime() + lowForecast * 24 * 3600_000);
       const upcomingForBatch = args.schedules.filter(
         (s) =>
@@ -80,13 +85,9 @@ export function computeInventoryWarnings(args: ComputeArgs): InventoryWarning[] 
           new Date(s.scheduledFor) >= now,
       );
       if (upcomingForBatch.length === 0) continue;
-      // Heuristic: warn when there are at least N pending doses for the same
-      // item AND the remaining quantity is at most 2× the count of doses (i.e.
-      // we're trending toward depletion within the window).
-      if (
-        upcomingForBatch.length >= 1 &&
-        b.remainingQuantity <= upcomingForBatch.length * 2
-      ) {
+      // Each pending dose draws ~1 unit; warn when remaining covers fewer
+      // than 2× the upcoming demand.
+      if (b.remainingQuantity <= upcomingForBatch.length * 2) {
         out.push({
           batchId: b.id,
           itemId: b.itemId,

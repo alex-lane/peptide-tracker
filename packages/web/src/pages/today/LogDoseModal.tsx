@@ -108,10 +108,13 @@ export function LogDoseModal({
           log: built.log,
           ...(built.adjustment ? { adjustment: built.adjustment } : {}),
         });
-        // Mark the schedule as logged.
+        // Mark the schedule as logged. Guard against concurrent state
+        // changes — only flip from pending/missed; don't overwrite a skip
+        // or an already-logged entry.
         await db.transaction('rw', db.doseSchedules, db.outbox, async () => {
           const fresh = await db.doseSchedules.get(mode.schedule.id);
-          if (!fresh) return;
+          if (!fresh || fresh.deletedAt) return;
+          if (fresh.status !== 'pending' && fresh.status !== 'missed') return;
           const next = {
             ...fresh,
             status: 'logged' as const,
