@@ -2,6 +2,9 @@
 node_modules/
 .pnpm-store/
 
+# AI
+.claude
+
 # build output
 dist/
 build/
