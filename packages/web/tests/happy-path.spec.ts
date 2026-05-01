@@ -4,6 +4,12 @@
 //   export JSON. The test runs against the dev server (Vite + Dexie in
 //   browser); no network mocking needed.
 //
+// Selector copy (`getByLabel`, `getByPlaceholder`, button names) was
+// derived from the M5 / M7 form components but has NOT been runtime-
+// verified in a Playwright run. First execution may need selector tweaks.
+// Run via `pnpm test:e2e` against the dev server; `playwright.config.ts`
+// already starts `pnpm dev` automatically.
+//
 // Each `await page.evaluate(() => indexedDB.deleteDatabase(...))` between
 // steps would let us reset cleanly, but we run the spec in isolation per
 // Playwright's fresh-context model, so the IndexedDB starts empty.
@@ -63,6 +69,21 @@ test.describe('Happy path', () => {
     // Today should now show a pending dose and the Log button.
     await page.getByRole('link', { name: /Today/i }).click();
     await expect(page.getByText(/Pending doses/i)).toBeVisible();
+
+    // Log the first pending dose. The "Log" button on the Today row opens
+    // the LogDoseModal in `from_schedule` mode pre-filled with the
+    // protocol-item dose (250 mcg).
+    await page.getByRole('button', { name: /^Log$/i }).first().click();
+    await page.getByRole('button', { name: /Save log/i }).click();
+
+    // Inventory should now show a reduced remaining quantity. 250 mcg out
+    // of 5 mg / 2 mL (2,500 mcg/mL) = 0.1 mL withdrawn → batch goes from
+    // 2 mL → 1.9 mL. We assert the visible "remaining" text changed away
+    // from the initial "2 / 2 mL" state rather than parsing the number, to
+    // stay resilient to formatting drift.
+    await page.getByRole('link', { name: /Inventory/i }).click();
+    await expect(page.getByText(/Sample peptide A/i)).toBeVisible();
+    await expect(page.locator('body')).not.toContainText('2 / 2 mL');
 
     // Settings → JSON export downloads a file. We just verify the download
     // event fires; signature verification lives in the unit tests.

@@ -50,7 +50,8 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.props.scope
               ? `The "${this.props.scope}" page hit an error.`
               : 'A page in the app hit an error.'}{' '}
-            Your local data is safe — export it below before reloading if you want a backup.
+            Other tabs in the bottom nav still work — switch to one to keep using the app, or
+            export your data below before reloading.
           </p>
         </header>
 
