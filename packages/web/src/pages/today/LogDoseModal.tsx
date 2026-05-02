@@ -61,6 +61,13 @@ export function LogDoseModal({
   );
   const [site, setSite] = useState<string>('');
   const [notes, setNotes] = useState('');
+  // Default takenAt to now in local time, formatted for <input type="datetime-local">.
+  // From-schedule mode prefills the schedule's instant.
+  const [takenAtLocal, setTakenAtLocal] = useState(() => {
+    const seed =
+      mode.kind === 'from_schedule' ? new Date(mode.schedule.scheduledFor) : new Date();
+    return toLocalDatetimeInput(seed);
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,6 +96,8 @@ export function LogDoseModal({
 
       const db = getDb();
       const repo = new DoseLogRepo(db);
+      const takenAtIso = fromLocalDatetimeInput(takenAtLocal);
+      if (!takenAtIso) throw new Error('Pick a valid date and time.');
 
       if (mode.kind === 'from_schedule') {
         const built = buildLogFromSchedule({
@@ -99,6 +108,7 @@ export function LogDoseModal({
           batch,
           doseAmount: n,
           doseUnit,
+          takenAtIso,
           ...(site && method !== 'oral' && method !== 'sublingual'
             ? { injectionSite: site as never }
             : {}),
@@ -147,7 +157,7 @@ export function LogDoseModal({
           ...(site && method !== 'oral' && method !== 'sublingual'
             ? { injectionSite: site as never }
             : {}),
-          takenAt: nowIso(),
+          takenAt: takenAtIso,
           ...(notes.trim() ? { notesMd: notes } : {}),
           createdAt: nowIso(),
           updatedAt: nowIso(),
@@ -259,6 +269,19 @@ export function LogDoseModal({
           </label>
         </div>
 
+        <label className="block text-sm">
+          <span className="block font-medium">Taken at</span>
+          <input
+            type="datetime-local"
+            value={takenAtLocal}
+            onChange={(e) => setTakenAtLocal(e.target.value)}
+            className="touch-lg mt-1 w-full rounded-md border border-paper-300 bg-paper-50 px-3 py-2 font-mono text-sm"
+          />
+          <span className="mt-1 block text-xs text-text-muted">
+            Defaults to now. Backdate if you're logging an injection from earlier.
+          </span>
+        </label>
+
         {showSite && (
           <label className="block text-sm">
             <span className="block font-medium">Injection site (optional)</span>
@@ -326,4 +349,17 @@ export function LogDoseModal({
       </div>
     </Modal>
   );
+}
+
+/** Format a Date for `<input type="datetime-local">` (`YYYY-MM-DDTHH:mm`). */
+function toLocalDatetimeInput(d: Date): string {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Parse the input value back into an ISO string in UTC. Returns null on bad input. */
+function fromLocalDatetimeInput(v: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }

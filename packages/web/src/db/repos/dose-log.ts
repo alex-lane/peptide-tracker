@@ -85,16 +85,42 @@ export class DoseLogRepo extends Repo<DoseLog> {
         }
       : undefined;
 
-    // 3. Atomic write across three tables.
+    // 3. Atomic write across four tables. The cached
+    // `batch.remainingQuantity` mirror also needs to track the delta or
+    // the inventory list and forecasts go stale (the ledger is the source
+    // of truth, but the cache is what the UI reads on every render).
     await this.db.transaction(
       'rw',
       this.db.doseLogs,
       this.db.inventoryAdjustments,
+      this.db.inventoryBatches,
       this.db.outbox,
       async () => {
         await this.db.doseLogs.put(stampedLog);
         if (stampedAdjustment) {
           await this.db.inventoryAdjustments.put(stampedAdjustment);
+          // Apply the delta to the batch's cached remaining quantity.
+          // adj.delta is negative for consumption; clamp at 0.
+          const batch = await this.db.inventoryBatches.get(stampedAdjustment.batchId);
+          if (batch && !batch.deletedAt) {
+            const next = {
+              ...batch,
+              remainingQuantity: Math.max(0, batch.remainingQuantity + stampedAdjustment.delta),
+              updatedAt: nowIso(),
+              version: batch.version + 1,
+            };
+            await this.db.inventoryBatches.put(next);
+            await this.db.outbox.add({
+              mutationId: newId(),
+              entity: 'inventoryBatch',
+              op: 'upsert',
+              payload: next,
+              createdAt: nowIso(),
+              retryCount: 0,
+              lastError: null,
+              ackedAt: null,
+            });
+          }
         }
         await this.db.outbox.add(logOutbox);
         if (adjOutbox) {
@@ -160,6 +186,7 @@ export class DoseLogRepo extends Repo<DoseLog> {
       'rw',
       this.db.doseLogs,
       this.db.inventoryAdjustments,
+      this.db.inventoryBatches,
       this.db.outbox,
       async () => {
         await this.db.doseLogs.put(undeletedLog);
@@ -185,6 +212,32 @@ export class DoseLogRepo extends Repo<DoseLog> {
             lastError: null,
             ackedAt: null,
           });
+          // Credit the batch back. comp.delta is positive (= +originalDelta
+          // since original was negative). Clamp at initialQuantity so a
+          // duplicate compensate can't push remaining above initial.
+          const batch = await this.db.inventoryBatches.get(comp.batchId);
+          if (batch && !batch.deletedAt) {
+            const next = {
+              ...batch,
+              remainingQuantity: Math.min(
+                batch.initialQuantity,
+                batch.remainingQuantity + comp.delta,
+              ),
+              updatedAt: nowIso(),
+              version: batch.version + 1,
+            };
+            await this.db.inventoryBatches.put(next);
+            await this.db.outbox.add({
+              mutationId: newId(),
+              entity: 'inventoryBatch',
+              op: 'upsert',
+              payload: next,
+              createdAt: nowIso(),
+              retryCount: 0,
+              lastError: null,
+              ackedAt: null,
+            });
+          }
         }
       },
     );

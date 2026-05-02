@@ -230,13 +230,15 @@ describe('end-to-end convergence', () => {
       log: buildLog(),
       adjustment: { batchId: seed.batch.id, delta: -0.1, unit: 'mL', reason: 'dose_log' },
     });
-    expect(await pendingCount(db)).toBe(2); // doseLog + adjustment
+    // doseLog + adjustment + inventoryBatch (cached-remaining update).
+    expect(await pendingCount(db)).toBe(3);
 
-    // 2. Online — drain pushes both mutations.
+    // 2. Online — drain pushes all three mutations.
     await drainOutbox(db, transport);
     expect(await pendingCount(db)).toBe(0);
     expect(server.rows['doseLog']?.size).toBe(1);
     expect(server.rows['inventoryAdjustment']?.size).toBe(1);
+    expect(server.rows['inventoryBatch']?.size).toBe(1);
 
     // 3. A second device pulls fresh from the server.
     const otherDb = makeTestDb();

@@ -3,7 +3,6 @@ import {
   Calculator,
   Settings as SettingsIcon,
   TrendingUp,
-  GraduationCap,
   ChevronRight,
   type LucideIcon,
   MoreHorizontal,
@@ -42,13 +41,6 @@ const items: MoreItem[] = [
     available: true,
     icon: SettingsIcon,
     tone: 'pink',
-  },
-  {
-    label: 'Education',
-    desc: 'Reference notes for tracked items',
-    available: false,
-    icon: GraduationCap,
-    tone: 'neutral',
   },
 ];
 

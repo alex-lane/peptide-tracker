@@ -38,7 +38,8 @@ const buildLog = (over: Partial<DoseLog> = {}): DoseLog => ({
 });
 
 describe('DoseLogRepo.create — atomic write', () => {
-  it('writes log + adjustment + 2 outbox rows in one shot', async () => {
+  it('writes log + adjustment + batch update + 3 outbox rows in one shot', async () => {
+    const before = await db.inventoryBatches.get(seed.batch.id);
     const result = await repo.create({
       log: buildLog(),
       adjustment: { batchId: seed.batch.id, delta: -0.1, unit: 'mL', reason: 'dose_log' },
@@ -54,9 +55,18 @@ describe('DoseLogRepo.create — atomic write', () => {
     expect(adjustments.length).toBe(1);
     expect(adjustments[0]?.refDoseLogId).toBe(result.log.id);
 
+    // Cached remaining quantity tracks the delta.
+    const after = await db.inventoryBatches.get(seed.batch.id);
+    expect(after?.remainingQuantity).toBeCloseTo((before?.remainingQuantity ?? 0) - 0.1, 6);
+
+    // Outbox carries doseLog + inventoryAdjustment + inventoryBatch.
     const outbox = await db.outbox.toArray();
-    expect(outbox).toHaveLength(2);
-    expect(outbox.map((o) => o.entity).sort()).toEqual(['doseLog', 'inventoryAdjustment']);
+    expect(outbox).toHaveLength(3);
+    expect(outbox.map((o) => o.entity).sort()).toEqual([
+      'doseLog',
+      'inventoryAdjustment',
+      'inventoryBatch',
+    ]);
   });
 
   it('skips inventory adjustment when none is supplied', async () => {
