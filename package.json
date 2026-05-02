@@ -7,7 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "concurrently -n web,worker -c blue,magenta \"pnpm --filter @peptide/web dev\" \"pnpm --filter @peptide/worker dev\"",
+    "dev": "concurrently -n web,worker -c blue,magenta \"pnpm --filter @peptide/web dev --host\" \"pnpm --filter @peptide/worker dev\"",
     "dev:web": "pnpm --filter @peptide/web dev",
     "dev:worker": "pnpm --filter @peptide/worker dev",
     "build": "pnpm -r build",
