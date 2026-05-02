@@ -10,11 +10,14 @@ compatibility_flags = ["nodejs_compat"]
 AUTH_MODE = "dev"
 ENVIRONMENT = "development"
 
-# D1 binding will be added in M2/M3. Placeholder commented out so wrangler dev runs.
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "peptide-tracker-dev"
-# database_id = "57e43be0-8ef5-4cea-8fc9-6a98fd31a1dc"
+# D1 binding. The local persisted db lives under .wrangler/state/v3/d1/
+# when running `wrangler dev`. Apply migrations with:
+#   pnpm --filter @peptide/worker exec wrangler d1 migrations apply DB --local
+[[d1_databases]]
+binding = "DB"
+database_name = "peptide-tracker-dev"
+database_id = "57e43be0-8ef5-4cea-8fc9-6a98fd31a1dc"
+migrations_dir = "migrations"
 
 # ─── Staging ─────────────────────────────────────────────────────────────────
 [env.staging]
