@@ -161,7 +161,12 @@ async function applyUpsert(
   principal: Principal,
 ): Promise<PushResultEntry> {
   const spec = TABLES[m.entity];
-  const payload = m.payload as Record<string, unknown>;
+  // Strip nulls from optional fields. Zod's `.optional()` accepts undefined
+  // but rejects null, and various Dexie/IndexedDB code paths persist
+  // optional unset fields as null. Older client builds also wrote null for
+  // explicitly-cleared fields, so normalizing here keeps legitimate
+  // historical rows from getting rejected.
+  const payload = stripNulls(m.payload as Record<string, unknown>);
 
   // For sync-tracked entities: validate against the Zod schema BEFORE we
   // do any tenant-scoped work. We use the existing schema by entity, but
@@ -182,8 +187,17 @@ async function applyUpsert(
   const toValidate = spec.isSynced ? normalized : payload;
   const parsed = schema.safeParse(toValidate);
   if (!parsed.success) {
-    const messages = parsed.error.issues.map((i: z.ZodIssue) => i.message).join('; ');
-    throw new TenantError(`Validation failed: ${messages}`, 400, 'VALIDATION_FAILED');
+    const messages = parsed.error.issues
+      .map((i: z.ZodIssue) => {
+        const path = i.path.length > 0 ? i.path.join('.') : '<root>';
+        return `${path}: ${i.message}`;
+      })
+      .join('; ');
+    throw new TenantError(
+      `Validation failed on ${m.entity}: ${messages}`,
+      400,
+      'VALIDATION_FAILED',
+    );
   }
 
   // Cross-row FK ownership check before the write — every referenced id
@@ -337,4 +351,18 @@ async function writeNonSynced(
       rawInsertOrReplace(entity: SyncEntityName, row: Record<string, unknown>): Promise<void>;
     }
   ).rawInsertOrReplace(entity, row);
+}
+
+/**
+ * Drop top-level keys whose value is `null`. Zod's `.optional()` accepts
+ * `undefined` but rejects `null`; without this, historical rows that
+ * persisted optional fields as null fail validation. Nested objects (e.g.
+ * `reconstitution`) are left as-is — they have their own schema.
+ */
+function stripNulls(obj: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== null) out[k] = v;
+  }
+  return out;
 }
