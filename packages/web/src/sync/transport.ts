@@ -101,7 +101,12 @@ export function createTransport(
 
 function buildHeaders(cfg: SyncConfig): Record<string, string> {
   const h: Record<string, string> = {};
-  if (cfg.devAs) h['x-dev-as'] = cfg.devAs;
-  if (cfg.devHousehold) h['x-dev-household'] = cfg.devHousehold;
+  // Prefer the explicit Settings → Dev overrides; fall back to the active
+  // household/user resolved by the engine. The fallback is what makes
+  // sync work without the user typing UUIDs into Settings.
+  const devAs = cfg.devAs || cfg.activeUserEmail;
+  const devHousehold = cfg.devHousehold || cfg.activeHouseholdId;
+  if (devAs) h['x-dev-as'] = devAs;
+  if (devHousehold) h['x-dev-household'] = devHousehold;
   return h;
 }

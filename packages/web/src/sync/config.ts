@@ -10,6 +10,11 @@ export interface SyncConfig {
   devAs?: string;
   /** Optional dev household override (mirrors x-dev-household). */
   devHousehold?: string;
+  /** Engine-injected fallbacks pulled from the active household/user
+   *  on every tick. NOT persisted — these populate the dev headers
+   *  whenever the user hasn't typed an explicit override into Settings. */
+  activeUserEmail?: string;
+  activeHouseholdId?: string;
 }
 
 const DEFAULT_CONFIG: SyncConfig = { workerUrl: '' };

@@ -22,12 +22,23 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
       console.warn('DEV AUTH BYPASS ACTIVE — do not deploy. Set AUTH_MODE=prod for staging/prod.');
       warned = true;
     }
+    // Deterministic UUID v5-ish defaults so the Worker's Zod schemas
+    // (which require uuid() on every id field) accept the synthetic
+    // principal even when the client doesn't supply the dev headers.
+    // Real clients should send x-dev-as / x-dev-household via the engine.
+    const DEFAULT_DEV_HOUSEHOLD = '00000000-0000-4000-8000-000000000001';
+    const DEFAULT_DEV_USER = '00000000-0000-4000-8000-000000000002';
     const headerOverride = c.req.header('x-dev-as');
     const email = headerOverride ?? 'alex@household.local';
+    const userIdFromHeader = isUuid(headerOverride) ? headerOverride : null;
+    const householdHeader = c.req.header('x-dev-household');
+    const householdId = isUuid(householdHeader)
+      ? (householdHeader as string)
+      : DEFAULT_DEV_HOUSEHOLD;
     const principal: Principal = {
       email,
-      userId: `dev-user-${email}`,
-      householdId: c.req.header('x-dev-household') ?? 'dev-household',
+      userId: userIdFromHeader ?? DEFAULT_DEV_USER,
+      householdId,
     };
     c.set('principal' as never, principal);
     await next();
@@ -58,4 +69,10 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
     throw err;
   }
   await next();
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(v: string | undefined | null): v is string {
+  return typeof v === 'string' && UUID_RE.test(v);
 }

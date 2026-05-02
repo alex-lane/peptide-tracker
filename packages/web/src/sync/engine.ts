@@ -3,6 +3,7 @@ import { drainOutbox, pendingCount, type DrainResult } from './drainer.js';
 import { pullAndMerge, type PullResult } from './puller.js';
 import { readConfig, type SyncConfig } from './config.js';
 import { createTransport, type SyncTransport } from './transport.js';
+import { readActive } from '../app/active-household.js';
 
 export type SyncEvent =
   | { kind: 'pull'; at: string; result: PullResult }
@@ -112,11 +113,13 @@ export class SyncEngine {
 
   /** Force a pull, ignoring the cursor. */
   async forcePull(): Promise<PullResult> {
+    await this.refreshActiveContext();
     return this.runPull({ force: true });
   }
 
   /** Manually drain the outbox. */
   async drain(): Promise<DrainResult> {
+    await this.refreshActiveContext();
     return this.runPush();
   }
 
@@ -134,8 +137,37 @@ export class SyncEngine {
   private async tick(): Promise<void> {
     if (!this.status.online) return;
     if (!this.cfg.workerUrl) return;
+    await this.refreshActiveContext();
     await this.runPush();
     await this.runPull();
+  }
+
+  /**
+   * Pull the active household + user from the meta table and stash them
+   * on this.cfg so the transport's buildHeaders falls back to them when
+   * Settings → Dev overrides are blank. Without this, the dev auth path
+   * stamps the literal 'dev-household' string and validation fails on
+   * householdId.
+   */
+  private async refreshActiveContext(): Promise<void> {
+    try {
+      const ctx = await readActive(this.db);
+      this.cfg = {
+        ...this.cfg,
+        ...(ctx.householdId ? { activeHouseholdId: ctx.householdId } : {}),
+      };
+      if (ctx.userId) {
+        const user = await this.db.userProfiles.get(ctx.userId);
+        if (user?.displayName) {
+          // The dev auth middleware uses this verbatim as `email` and
+          // derives userId from it. We pass the household-scoped user id
+          // so the principal references real rows.
+          this.cfg = { ...this.cfg, activeUserEmail: ctx.userId };
+        }
+      }
+    } catch {
+      // Best-effort — sync still works against explicit Settings overrides.
+    }
   }
 
   private async runPull(opts: { force?: boolean } = {}): Promise<PullResult> {
