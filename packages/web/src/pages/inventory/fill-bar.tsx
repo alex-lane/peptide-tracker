@@ -25,7 +25,7 @@ export function FillBar({ filled, total, className }: Props) {
       <div
         className={cn(
           'absolute left-0 top-0 h-full transition-all duration-240 ease-out-fast',
-          ratio > 0.33 ? 'bg-ink-300' : 'bg-warn',
+          ratio > 0.33 ? 'bg-accent-primary' : 'bg-warn',
         )}
         style={{ width: `${pct}%` }}
       />

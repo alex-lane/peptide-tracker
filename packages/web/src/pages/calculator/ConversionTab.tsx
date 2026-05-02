@@ -48,7 +48,7 @@ function ToggleButton({
       aria-pressed={active}
       className={
         active
-          ? 'rounded-full bg-ink-300 px-3 py-1.5 text-xs text-paper-100'
+          ? 'rounded-full bg-accent-primary px-3 py-1.5 text-xs text-white shadow-glow'
           : 'rounded-full bg-paper-200 px-3 py-1.5 text-xs text-ink-200 hover:bg-paper-300'
       }
     >

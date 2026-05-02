@@ -194,7 +194,7 @@ export function SettingsPage() {
           <button
             type="button"
             onClick={saveSyncConfig}
-            className="rounded-md bg-ink-300 px-3 py-2 text-sm text-paper-100 transition-colors duration-120 hover:bg-ink-200"
+            className="rounded-md bg-accent-primary px-3 py-2 text-sm text-white transition-colors duration-120 hover:bg-accent-primary-hover shadow-glow"
           >
             Save config
           </button>
@@ -247,7 +247,7 @@ export function SettingsPage() {
         <button
           type="button"
           onClick={handleExport}
-          className="touch-lg rounded-md bg-ink-300 px-4 py-2 text-paper-100 transition-colors duration-120 hover:bg-ink-200 disabled:opacity-50"
+          className="touch-lg rounded-md bg-accent-primary px-4 py-2 text-white transition-colors duration-120 hover:bg-accent-primary-hover shadow-glow disabled:opacity-50"
           disabled={status.kind === 'busy'}
         >
           Export to JSON

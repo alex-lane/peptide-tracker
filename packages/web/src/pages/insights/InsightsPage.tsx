@@ -478,7 +478,7 @@ function MetricRow({
           type="button"
           onClick={() => void record()}
           disabled={busy || !valueRaw.trim()}
-          className="rounded-md bg-ink-300 px-3 py-1 text-xs text-paper-100 disabled:opacity-50"
+          className="rounded-md bg-accent-primary px-3 py-1 text-xs text-white shadow-glow disabled:opacity-50"
         >
           Record
         </button>
@@ -578,7 +578,7 @@ function NewMetricForm({
           type="button"
           disabled={busy}
           onClick={() => void save()}
-          className="rounded-md bg-ink-300 px-3 py-1 text-xs text-paper-100 disabled:opacity-50"
+          className="rounded-md bg-accent-primary px-3 py-1 text-xs text-white shadow-glow disabled:opacity-50"
         >
           Add
         </button>

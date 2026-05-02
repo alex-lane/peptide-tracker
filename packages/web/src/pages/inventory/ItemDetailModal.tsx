@@ -214,7 +214,7 @@ export function ItemDetailModal({
               <button
                 type="button"
                 onClick={() => setPane('add-batch')}
-                className="rounded-md bg-ink-300 px-3 py-2 text-sm text-paper-100 hover:bg-ink-200"
+                className="rounded-md bg-accent-primary px-3 py-2 text-sm text-white hover:bg-accent-primary-hover shadow-glow"
               >
                 Add batch
               </button>
@@ -247,7 +247,7 @@ export function ItemDetailModal({
               <button
                 type="button"
                 onClick={() => setPane('edit-item')}
-                className="rounded-md bg-ink-300 px-3 py-2 text-sm text-paper-100 hover:bg-ink-200"
+                className="rounded-md bg-accent-primary px-3 py-2 text-sm text-white hover:bg-accent-primary-hover shadow-glow"
               >
                 Edit product
               </button>

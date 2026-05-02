@@ -259,7 +259,7 @@ export function ProtocolBuilder({
             type="button"
             disabled={!stepValid}
             onClick={next}
-            className="rounded-md bg-ink-300 px-3 py-1.5 text-sm text-paper-100 hover:bg-ink-200 disabled:opacity-50"
+            className="rounded-md bg-accent-primary px-3 py-1.5 text-sm text-white hover:bg-accent-primary-hover shadow-glow disabled:opacity-50"
           >
             Next
           </button>
@@ -277,7 +277,7 @@ export function ProtocolBuilder({
               type="button"
               disabled={busy}
               onClick={() => void activate(true)}
-              className="rounded-md bg-ink-300 px-3 py-1.5 text-sm text-paper-100 hover:bg-ink-200 disabled:opacity-50"
+              className="rounded-md bg-accent-primary px-3 py-1.5 text-sm text-white hover:bg-accent-primary-hover shadow-glow disabled:opacity-50"
             >
               {busy ? 'Saving…' : 'Activate'}
             </button>
@@ -326,7 +326,7 @@ function StepPill({
   const active = n === current;
   return (
     <li
-      className={`rounded-full px-2 py-0.5 ${active ? 'bg-ink-300 text-paper-100' : 'bg-paper-200'}`}
+      className={`rounded-full px-2 py-0.5 ${active ? 'bg-accent-primary text-white shadow-glow' : 'bg-bg-elevated text-text-secondary'}`}
     >
       {n}. {children}
     </li>
@@ -702,7 +702,7 @@ function PresetBtn({
       aria-pressed={active}
       className={
         active
-          ? 'rounded-full bg-ink-300 px-3 py-1.5 text-xs text-paper-100'
+          ? 'rounded-full bg-accent-primary px-3 py-1.5 text-xs text-white shadow-glow'
           : 'rounded-full bg-paper-200 px-3 py-1.5 text-xs text-ink-200 hover:bg-paper-300'
       }
     >

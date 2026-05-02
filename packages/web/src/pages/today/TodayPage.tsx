@@ -351,7 +351,7 @@ function Bucket({
               className={
                 variant === 'missed'
                   ? 'rounded-md bg-warn px-3 py-1.5 text-xs text-warn-fg hover:opacity-90'
-                  : 'rounded-md bg-ink-300 px-3 py-1.5 text-xs text-paper-100 hover:bg-ink-200'
+                  : 'rounded-md bg-accent-primary px-3 py-1.5 text-xs text-white hover:bg-accent-primary-hover shadow-glow'
               }
             >
               {variant === 'missed' ? 'Log late' : 'Log'}
@@ -442,7 +442,7 @@ function InventoryWarningsCard({
               <span
                 className={`rounded-sm px-1.5 py-0.5 text-[11px] ${
                   w.kind === 'discard_by_passed'
-                    ? 'bg-danger text-paper-100'
+                    ? 'bg-danger text-white'
                     : 'bg-warn text-warn-fg'
                 }`}
               >

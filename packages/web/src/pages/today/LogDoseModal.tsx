@@ -318,7 +318,7 @@ export function LogDoseModal({
             type="button"
             disabled={busy}
             onClick={() => void save()}
-            className="rounded-md bg-ink-300 px-3 py-1.5 text-sm text-paper-100 hover:bg-ink-200 disabled:opacity-50"
+            className="rounded-md bg-accent-primary px-3 py-1.5 text-sm text-white hover:bg-accent-primary-hover shadow-glow disabled:opacity-50"
           >
             {busy ? 'Saving…' : 'Save log'}
           </button>

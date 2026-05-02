@@ -99,7 +99,7 @@ export function HouseholdBootstrap({ onCreated }: Props) {
       <button
         type="submit"
         disabled={busy}
-        className="touch-lg w-full rounded-md bg-ink-300 px-4 py-3 text-paper-100 transition-colors duration-120 hover:bg-ink-200 disabled:opacity-50"
+        className="touch-lg w-full rounded-md bg-accent-primary px-4 py-3 text-white transition-colors duration-120 hover:bg-accent-primary-hover shadow-glow disabled:opacity-50"
       >
         {busy ? 'Creating…' : 'Create household'}
       </button>

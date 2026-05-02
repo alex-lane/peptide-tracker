@@ -212,7 +212,7 @@ function EmptyState({ onAdd, hasAny }: { onAdd: () => void; hasAny: boolean }) {
         <button
           type="button"
           onClick={onAdd}
-          className="mt-3 rounded-md bg-ink-300 px-3 py-2 text-sm text-paper-100 hover:bg-ink-200"
+          className="mt-3 rounded-md bg-accent-primary px-3 py-2 text-sm text-white hover:bg-accent-primary-hover shadow-glow"
         >
           Add product
         </button>
