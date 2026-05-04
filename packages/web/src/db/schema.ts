@@ -20,7 +20,7 @@ import type {
 } from './types.js';
 
 export const DB_NAME = 'peptide-tracker';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 /**
  * Singleton key/value rows for sync cursor + config. Dexie has no first-class
@@ -88,6 +88,21 @@ export class PeptideDb extends Dexie {
     // v2 — adds the sync cursor + config singleton table.
     this.version(2).stores({
       meta: 'key',
+    });
+
+    // v3 (A0.1) — adds creatorUserId index on inventory tables so the
+    // share-scope filter (creator = me OR shareScope = 'household')
+    // resolves locally without a full table scan. Defaults to existing
+    // row behavior: any row without the columns is treated as
+    // shareScope = 'household' until the server pulls it back with the
+    // real values.
+    this.version(3).stores({
+      inventoryItems:
+        'id, householdId, creatorUserId, [householdId+updatedAt], [householdId+creatorUserId], deletedAt, form',
+      inventoryBatches:
+        'id, householdId, itemId, creatorUserId, [householdId+updatedAt], [householdId+itemId], [householdId+creatorUserId], deletedAt, status, expiresAt',
+      supplyItems:
+        'id, householdId, itemId, creatorUserId, [householdId+updatedAt], [householdId+creatorUserId], deletedAt',
     });
   }
 }

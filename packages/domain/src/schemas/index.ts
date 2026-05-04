@@ -116,6 +116,9 @@ export type UserProfile = z.infer<typeof userProfile>;
 
 // ─── Inventory ────────────────────────────────────────────────────────
 
+export const shareScope = z.enum(['private', 'household']);
+export type ShareScopeT = z.infer<typeof shareScope>;
+
 export const inventoryItem = baseEntity.extend({
   name: z.string().min(1).max(120),
   form: productForm,
@@ -133,6 +136,13 @@ export const inventoryItem = baseEntity.extend({
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .optional(),
+  /** Member who created this item. Server-stamped on insert. Nullable
+   * during the A0.1 → A0.3 rollout window for backfilled rows. */
+  creatorUserId: id.optional(),
+  /** Visibility within the household. Defaults to `private` on new items
+   * (A0.3); existing rows backfilled to `household` to preserve current
+   * behavior. */
+  shareScope: shareScope.optional(),
 });
 export type InventoryItem = z.infer<typeof inventoryItem>;
 
@@ -177,6 +187,10 @@ export const inventoryBatch = baseEntity.extend({
   status: batchStatus,
   reconstitution: reconstitutionRecord.optional(),
   notesMd: z.string().max(20_000).optional(),
+  /** Cascaded from the parent inventory item; child rows inherit so reads
+   * can filter by share scope without joining the item table. */
+  creatorUserId: id.optional(),
+  shareScope: shareScope.optional(),
 });
 export type InventoryBatch = z.infer<typeof inventoryBatch>;
 
@@ -185,6 +199,9 @@ export const supplyItem = baseEntity.extend({
   remainingCount: z.number().int().nonnegative(),
   thresholdLowCount: z.number().int().nonnegative().optional(),
   notesMd: z.string().max(5000).optional(),
+  /** Cascaded from the parent inventory item. */
+  creatorUserId: id.optional(),
+  shareScope: shareScope.optional(),
 });
 export type SupplyItem = z.infer<typeof supplyItem>;
 
