@@ -42,7 +42,9 @@ interface ParsedUpdate {
 
 type WhereClause =
   | { col: string; op: '=' | '>'; placeholder: true }
-  | { col: string; op: 'IS NULL' };
+  | { col: string; op: '='; literal: string }
+  | { col: string; op: 'IS NULL' }
+  | { kind: 'or'; clauses: WhereClause[] };
 
 interface DDL {
   kind: 'ddl';
@@ -105,19 +107,104 @@ function parse(sql: string): Parsed {
 }
 
 function parseWhere(expr: string): WhereClause[] {
-  return expr
-    .split(/\s+AND\s+/i)
-    .map((piece) => piece.trim())
-    .filter((p) => p.length > 0)
-    .map((piece) => {
-      const eq = piece.match(/^(\w+)\s*=\s*\?$/);
-      if (eq) return { col: eq[1]!, op: '=' as const, placeholder: true };
-      const gt = piece.match(/^(\w+)\s*>\s*\?$/);
-      if (gt) return { col: gt[1]!, op: '>' as const, placeholder: true };
-      const isNull = piece.match(/^(\w+)\s+IS\s+NULL$/i);
-      if (isNull) return { col: isNull[1]!, op: 'IS NULL' as const };
-      throw new Error(`fake-d1: cannot parse WHERE piece: ${piece}`);
-    });
+  // Split top-level on AND while respecting parentheses. We need this so
+  // that `A AND (B OR C) AND D` produces three pieces, not five.
+  const pieces = splitTopLevelOnAnd(expr);
+  return pieces.map((piece) => parseWherePiece(piece));
+}
+
+function splitTopLevelOnAnd(expr: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let buf = '';
+  let i = 0;
+  while (i < expr.length) {
+    const ch = expr[i]!;
+    if (ch === '(') {
+      depth++;
+      buf += ch;
+      i++;
+      continue;
+    }
+    if (ch === ')') {
+      depth--;
+      buf += ch;
+      i++;
+      continue;
+    }
+    // Match `\sAND\s` only at top level.
+    if (depth === 0 && /\s/.test(ch)) {
+      const ahead = expr.slice(i).match(/^\s+AND\s+/i);
+      if (ahead) {
+        if (buf.trim()) out.push(buf.trim());
+        buf = '';
+        i += ahead[0].length;
+        continue;
+      }
+    }
+    buf += ch;
+    i++;
+  }
+  if (buf.trim()) out.push(buf.trim());
+  return out;
+}
+
+function parseWherePiece(piece: string): WhereClause {
+  // Parenthesized OR group: `(X OR Y OR Z)` where each X/Y/Z is itself a
+  // parseable clause.
+  if (piece.startsWith('(') && piece.endsWith(')')) {
+    const inner = piece.slice(1, -1).trim();
+    const orParts = splitTopLevelOnOr(inner);
+    if (orParts.length > 1) {
+      return { kind: 'or', clauses: orParts.map(parseWherePiece) };
+    }
+    // Parens around a single clause — strip and recurse.
+    return parseWherePiece(inner);
+  }
+  const eqLit = piece.match(/^(\w+)\s*=\s*'([^']*)'$/);
+  if (eqLit) return { col: eqLit[1]!, op: '=' as const, literal: eqLit[2]! };
+  const eq = piece.match(/^(\w+)\s*=\s*\?$/);
+  if (eq) return { col: eq[1]!, op: '=' as const, placeholder: true };
+  const gt = piece.match(/^(\w+)\s*>\s*\?$/);
+  if (gt) return { col: gt[1]!, op: '>' as const, placeholder: true };
+  const isNull = piece.match(/^(\w+)\s+IS\s+NULL$/i);
+  if (isNull) return { col: isNull[1]!, op: 'IS NULL' as const };
+  throw new Error(`fake-d1: cannot parse WHERE piece: ${piece}`);
+}
+
+function splitTopLevelOnOr(expr: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let buf = '';
+  let i = 0;
+  while (i < expr.length) {
+    const ch = expr[i]!;
+    if (ch === '(') {
+      depth++;
+      buf += ch;
+      i++;
+      continue;
+    }
+    if (ch === ')') {
+      depth--;
+      buf += ch;
+      i++;
+      continue;
+    }
+    if (depth === 0 && /\s/.test(ch)) {
+      const ahead = expr.slice(i).match(/^\s+OR\s+/i);
+      if (ahead) {
+        if (buf.trim()) out.push(buf.trim());
+        buf = '';
+        i += ahead[0].length;
+        continue;
+      }
+    }
+    buf += ch;
+    i++;
+  }
+  if (buf.trim()) out.push(buf.trim());
+  return out;
 }
 
 export class FakeD1 implements D1Database {
@@ -226,11 +313,9 @@ class FakeStatement implements D1PreparedStatement {
       });
       let cursor = parsed.setCols.length;
       const whereVals: Record<string, unknown> = {};
-      for (const w of parsed.where) {
-        if ('placeholder' in w && w.placeholder) {
-          whereVals[w.col] = this.bound[cursor++];
-        }
-      }
+      walkPlaceholders(parsed.where, (col) => {
+        whereVals[col] = this.bound[cursor++];
+      });
       for (const row of rows) {
         if (!matchesWhere(row, parsed.where, whereVals)) continue;
         Object.assign(row, setVals);
@@ -242,11 +327,9 @@ class FakeStatement implements D1PreparedStatement {
     const rows = this.tables.get(parsed.table)!;
     const whereVals: Record<string, unknown> = {};
     let cursor = 0;
-    for (const w of parsed.where) {
-      if ('placeholder' in w && w.placeholder) {
-        whereVals[w.col] = this.bound[cursor++];
-      }
-    }
+    walkPlaceholders(parsed.where, (col) => {
+      whereVals[col] = this.bound[cursor++];
+    });
     let filtered = rows.filter((r) => matchesWhere(r, parsed.where, whereVals));
     if (parsed.orderBy) {
       const col = parsed.orderBy.col;
@@ -279,22 +362,48 @@ class FakeStatement implements D1PreparedStatement {
 
 function matchesWhere(row: Row, where: WhereClause[], vals: Record<string, unknown>): boolean {
   for (const w of where) {
-    if (w.op === 'IS NULL') {
-      if (row[w.col] !== null && row[w.col] !== undefined) return false;
-      continue;
-    }
-    if (w.op === '=') {
-      if (row[w.col] !== vals[w.col]) return false;
-      continue;
-    }
-    if (w.op === '>') {
-      const a = row[w.col];
-      const b = vals[w.col];
-      if (typeof a !== 'string' || typeof b !== 'string') return false;
-      if (!(a > b)) return false;
-    }
+    if (!matchesClause(row, w, vals)) return false;
   }
   return true;
+}
+
+function matchesClause(row: Row, w: WhereClause, vals: Record<string, unknown>): boolean {
+  if ('kind' in w) {
+    // OR group — any clause matches.
+    return w.clauses.some((c) => matchesClause(row, c, vals));
+  }
+  if (w.op === 'IS NULL') {
+    return row[w.col] === null || row[w.col] === undefined;
+  }
+  if (w.op === '=') {
+    if ('literal' in w) return row[w.col] === w.literal;
+    return row[w.col] === vals[w.col];
+  }
+  // w.op === '>'
+  const a = row[w.col];
+  const b = vals[w.col];
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  return a > b;
+}
+
+/**
+ * Walk a where-clause tree and call `cb` on every placeholder leaf in the
+ * order it would be bound. Used to map bound values to their column slots
+ * across both top-level and OR-grouped placeholders.
+ */
+function walkPlaceholders(
+  where: WhereClause[],
+  cb: (col: string) => void,
+): void {
+  for (const w of where) walkClausePlaceholders(w, cb);
+}
+
+function walkClausePlaceholders(w: WhereClause, cb: (col: string) => void): void {
+  if ('kind' in w && w.kind === 'or') {
+    for (const c of w.clauses) walkClausePlaceholders(c, cb);
+    return;
+  }
+  if ('placeholder' in w && w.placeholder) cb(w.col);
 }
 
 function keysMatch(a: Row, b: Row, keys: string[]): boolean {

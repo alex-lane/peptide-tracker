@@ -89,9 +89,29 @@ class ScopedDbImpl implements ScopedDb {
     const spec = TABLES[entity];
     if (!spec.isSynced) return [];
     const cols = Object.values(spec.columns).join(', ');
+
+    // A0.2 per-entity privacy filters layered on top of the household scope:
+    //  - inventory tables: caller sees only items they own OR items shared
+    //    with the whole household
+    //  - dose_logs and protocols: caller sees only their own
+    // Other synced entities keep household-only scoping (today's behavior).
+    let privacyClause = '';
+    const privacyArgs: unknown[] = [];
+    if (
+      entity === 'inventoryItem' ||
+      entity === 'inventoryBatch' ||
+      entity === 'supplyItem'
+    ) {
+      privacyClause = `AND (creator_user_id = ? OR share_scope = 'household')`;
+      privacyArgs.push(this.principal.userId);
+    } else if (entity === 'doseLog' || entity === 'protocol') {
+      privacyClause = `AND user_id = ?`;
+      privacyArgs.push(this.principal.userId);
+    }
+
     const sinceClause = since ? `AND updated_at > ?` : '';
-    const sql = `SELECT ${cols} FROM ${spec.table} WHERE household_id = ? ${sinceClause} ORDER BY updated_at ASC LIMIT 5000`;
-    const args: unknown[] = [this.householdId];
+    const sql = `SELECT ${cols} FROM ${spec.table} WHERE household_id = ? ${privacyClause} ${sinceClause} ORDER BY updated_at ASC LIMIT 5000`;
+    const args: unknown[] = [this.householdId, ...privacyArgs];
     if (since) args.push(since);
 
     const stmt = this.db.prepare(sql).bind(...args);
@@ -119,6 +139,25 @@ class ScopedDbImpl implements ScopedDb {
       version: expectedVersion + 1,
     };
 
+    // A0.2 server-side stamping for inventory ownership. The creator is
+    // always the caller for fresh inserts; we never accept a client-supplied
+    // creatorUserId on first write so a malicious client cannot pre-claim
+    // ownership for a different member. On update, we preserve whatever the
+    // existing row already has (re-fetched below) so creator stickiness is
+    // server-authoritative.
+    if (
+      entity === 'inventoryItem' ||
+      entity === 'inventoryBatch' ||
+      entity === 'supplyItem'
+    ) {
+      // shareScope is client-controlled (premise 2: creator chooses), but
+      // default to 'private' if absent — matches A0.3 UI default and
+      // protects against old clients that don't know about the field.
+      if (stamped['shareScope'] === undefined || stamped['shareScope'] === null) {
+        stamped['shareScope'] = 'private';
+      }
+    }
+
     // Read existing row to enforce OCC. If absent, this is a fresh insert
     // and expectedVersion must be 0.
     const existing = await this.getById(entity, String(stamped.id));
@@ -134,12 +173,33 @@ class ScopedDbImpl implements ScopedDb {
       if (typeof existing['version'] === 'number' && existing['version'] !== expectedVersion) {
         return { status: 'conflict', canonical: existing };
       }
+      // Preserve server-authoritative creator across updates so the field
+      // can't be flipped by a malicious or buggy client. The existing row
+      // is the source of truth.
+      if (
+        entity === 'inventoryItem' ||
+        entity === 'inventoryBatch' ||
+        entity === 'supplyItem'
+      ) {
+        if (existing['creatorUserId']) {
+          stamped['creatorUserId'] = existing['creatorUserId'];
+        }
+      }
     } else if (expectedVersion !== 0) {
       // Client thinks the row exists at some version; we have no row at all.
       return {
         status: 'conflict',
         canonical: { id: stamped.id, missing: true } as Record<string, unknown>,
       };
+    } else {
+      // Fresh insert: stamp the caller as the creator.
+      if (
+        entity === 'inventoryItem' ||
+        entity === 'inventoryBatch' ||
+        entity === 'supplyItem'
+      ) {
+        stamped['creatorUserId'] = this.principal.userId;
+      }
     }
 
     // Build INSERT OR REPLACE — SQLite's UPSERT.
