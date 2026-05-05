@@ -12,7 +12,7 @@ import {
   type ProtocolItem,
   type UserProfile,
 } from '@peptide/domain';
-import type { PeptideDb } from '@/db';
+import { filterByShareScope, type PeptideDb } from '@/db';
 
 export interface BuildLocalIcsArgs {
   db: PeptideDb;
@@ -33,9 +33,18 @@ export async function buildLocalIcs(args: BuildLocalIcsArgs): Promise<string> {
   const allProtocolItems = await db.protocolItems.toArray();
   const protocolIds = new Set(protocols.map((p) => p.id));
   const protocolItems = allProtocolItems.filter((pi: ProtocolItem) => protocolIds.has(pi.protocolId));
-  const inventoryItems = (
-    await db.inventoryItems.where('householdId').equals(householdId).toArray()
-  ).filter((i: InventoryItem) => !i.deletedAt);
+  // Apply share-scope filter so private items only appear in feeds owned
+  // by their creator. For household-scoped feeds, viewerUserId is null,
+  // which the helper treats as "no member context" — private items are
+  // hidden by default. This matches the on-device privacy contract from
+  // A0.2's withTenant filter.
+  const viewerUserId = feed.scope === 'user' ? (feed.userId ?? null) : null;
+  const inventoryItems = filterByShareScope(
+    (await db.inventoryItems.where('householdId').equals(householdId).toArray()).filter(
+      (i: InventoryItem) => !i.deletedAt,
+    ),
+    viewerUserId,
+  );
 
   const events = buildEventsForFeed({
     settings: feed,

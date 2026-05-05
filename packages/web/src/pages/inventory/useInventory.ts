@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getDb } from '@/db';
+import { filterByShareScope, getDb } from '@/db';
 import type { InventoryBatch, InventoryItem } from '@/db';
 
 export interface InventoryRow {
@@ -15,28 +15,43 @@ const ACTIVE_STATUSES: ReadonlyArray<InventoryBatch['status']> = [
 ];
 
 /**
- * Live query: items + their non-deleted batches for the active household.
- * `activeBatch` is the first batch in (in_use → reconstituted → sealed)
- * order, ignoring empty / discarded / expired.
+ * Live query: items + their non-deleted batches for the active household,
+ * filtered by share scope so the active member only sees items they own
+ * or items shared with the whole household. Mirrors the server-side
+ * filter in withTenant.pullUpdated; needed locally because IndexedDB
+ * holds rows for every member who has used this browser session.
  */
-export function useInventory(householdId: string | null): InventoryRow[] {
+export function useInventory(
+  householdId: string | null,
+  activeUserId: string | null = null,
+): InventoryRow[] {
   const rows = useLiveQuery(
     async () => {
       if (!householdId) return [];
       const db = getDb();
-      const items = (await db.inventoryItems.where('householdId').equals(householdId).toArray())
-        .filter((i) => !i.deletedAt)
-        .sort((a, b) => a.name.localeCompare(b.name));
-      const batches = (
-        await db.inventoryBatches.where('householdId').equals(householdId).toArray()
-      ).filter((b) => !b.deletedAt);
+      const allItems = await db.inventoryItems
+        .where('householdId')
+        .equals(householdId)
+        .toArray();
+      const items = filterByShareScope(
+        allItems.filter((i) => !i.deletedAt),
+        activeUserId,
+      ).sort((a, b) => a.name.localeCompare(b.name));
+      const allBatches = await db.inventoryBatches
+        .where('householdId')
+        .equals(householdId)
+        .toArray();
+      const batches = filterByShareScope(
+        allBatches.filter((b) => !b.deletedAt),
+        activeUserId,
+      );
       return items.map<InventoryRow>((item) => {
         const itemBatches = batches.filter((b) => b.itemId === item.id);
         const activeBatch = pickActiveBatch(itemBatches);
         return { item, batches: itemBatches, activeBatch };
       });
     },
-    [householdId],
+    [householdId, activeUserId],
     [],
   );
   return rows ?? [];

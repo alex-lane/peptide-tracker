@@ -3,7 +3,7 @@ import * as Tabs from '@radix-ui/react-tabs';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSearchParams } from 'react-router-dom';
 import { Beaker, Calculator, ArrowLeftRight } from 'lucide-react';
-import { getDb } from '@/db';
+import { filterByShareScope, getDb } from '@/db';
 import { useActive } from '@/app/useActive';
 import { ReconstituteTab } from './ReconstituteTab';
 import { DoseTab } from './DoseTab';
@@ -36,9 +36,13 @@ export function CalculatorPage() {
     async () => {
       if (!active.householdId) return [];
       const all = await db.inventoryItems.where('householdId').equals(active.householdId).toArray();
-      return all.filter((i) => !i.deletedAt).sort((a, b) => a.name.localeCompare(b.name));
+      const visible = filterByShareScope(
+        all.filter((i) => !i.deletedAt),
+        active.userId,
+      );
+      return visible.sort((a, b) => a.name.localeCompare(b.name));
     },
-    [active.householdId],
+    [active.householdId, active.userId],
     [],
   );
   const batches = useLiveQuery(
@@ -48,9 +52,12 @@ export function CalculatorPage() {
         .where('householdId')
         .equals(active.householdId)
         .toArray();
-      return all.filter((b) => !b.deletedAt);
+      return filterByShareScope(
+        all.filter((b) => !b.deletedAt),
+        active.userId,
+      );
     },
-    [active.householdId],
+    [active.householdId, active.userId],
     [],
   );
 
