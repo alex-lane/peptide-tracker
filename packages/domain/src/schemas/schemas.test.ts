@@ -91,6 +91,8 @@ describe('inventoryItem + inventoryBatch', () => {
       form: 'injectable_lyophilized',
       defaultStrength: { value: 5, unit: 'mg' },
       defaultUnitOfDose: 'mcg',
+      creatorUserId: USER_ID,
+      shareScope: 'household',
     });
     expect(r.form).toBe('injectable_lyophilized');
   });
@@ -114,6 +116,8 @@ describe('inventoryItem + inventoryBatch', () => {
         resultingConcentration: { value: 2.5, unit: 'mg', perMl: true },
         byUserId: USER_ID,
       },
+      creatorUserId: USER_ID,
+      shareScope: 'household',
     });
     expect(r.status).toBe('reconstituted');
     expect(r.reconstitution?.diluentVolumeMl).toBe(2);

@@ -75,7 +75,13 @@ export function ItemDetailModal({
       description={pane === 'detail' ? labelForm(item.form) : undefined}
     >
       {pane === 'edit-item' && (
-        <ItemForm householdId={householdId} initial={item} onSaved={back} onCancel={back} />
+        <ItemForm
+          householdId={householdId}
+          activeUserId={activeUserId}
+          initial={item}
+          onSaved={back}
+          onCancel={back}
+        />
       )}
       {pane === 'add-batch' && (
         <BatchForm householdId={householdId} item={item} onSaved={back} onCancel={back} />

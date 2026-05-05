@@ -23,6 +23,8 @@ function makeBatch(over: Partial<InventoryBatch> = {}): InventoryBatch {
     createdAt: NOW,
     updatedAt: NOW,
     version: 0,
+    creatorUserId: 'u1',
+    shareScope: 'household',
     ...over,
   };
 }

@@ -46,6 +46,8 @@ describe('reconstitution flow', () => {
       initialQuantityUnit: 'mg',
       remainingQuantity: 5,
       status: 'sealed',
+      creatorUserId: seed.alex.id,
+      shareScope: 'household',
     };
     await db.inventoryBatches.put(sealed);
 

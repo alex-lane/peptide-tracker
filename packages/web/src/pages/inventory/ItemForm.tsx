@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Lock, Users } from 'lucide-react';
 import { z } from 'zod';
 import { getDb, InventoryItemRepo, newId, nowIso } from '@/db';
 import type { InventoryItem } from '@/db';
+import { listUsersInHousehold } from '@/app/active-household';
 import { labelForm } from './formatting';
 
 const FORMS: ReadonlyArray<InventoryItem['form']> = [
@@ -36,12 +39,13 @@ const formSchema = z.object({
 
 interface Props {
   householdId: string;
+  activeUserId: string;
   initial?: InventoryItem;
   onSaved: (item: InventoryItem) => void;
   onCancel: () => void;
 }
 
-export function ItemForm({ householdId, initial, onSaved, onCancel }: Props) {
+export function ItemForm({ householdId, activeUserId, initial, onSaved, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? '');
   const [form, setForm] = useState<InventoryItem['form']>(
     initial?.form ?? 'injectable_lyophilized',
@@ -55,12 +59,28 @@ export function ItemForm({ householdId, initial, onSaved, onCancel }: Props) {
   const [doseUnit, setDoseUnit] = useState(initial?.defaultUnitOfDose ?? 'mcg');
   const [vendor, setVendor] = useState(initial?.vendor ?? '');
   const [notesMd, setNotesMd] = useState(initial?.notesMd ?? '');
+  // Premise 2 default (autoplan-adjudicated): new items are private.
+  // Editing an existing item preserves whatever scope it already has.
+  const [shareScope, setShareScope] = useState<'private' | 'household'>(
+    initial?.shareScope ?? 'private',
+  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Hide the share toggle entirely when the household has only one
+  // member — there's nobody to share WITH, so the choice is meaningless.
+  // Per the autoplan design adjudication: replace with an inline
+  // "Invite someone to share" hint instead.
+  const memberCount = useLiveQuery(
+    async () => (await listUsersInHousehold(getDb(), householdId)).length,
+    [householdId],
+    1,
+  );
+  const isSoloHousehold = (memberCount ?? 1) <= 1;
+
   useEffect(() => {
     setError(null);
-  }, [name, form, strengthValue, strengthUnit, doseUnit, vendor, notesMd]);
+  }, [name, form, strengthValue, strengthUnit, doseUnit, vendor, notesMd, shareScope]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -83,6 +103,12 @@ export function ItemForm({ householdId, initial, onSaved, onCancel }: Props) {
     try {
       const repo = new InventoryItemRepo(getDb());
       const now = nowIso();
+      // Solo households save as 'private' (the toggle is hidden); the
+      // server-side share-scope filter still works because the creator
+      // is the only member who can see it.
+      const effectiveShareScope: 'private' | 'household' = isSoloHousehold
+        ? 'private'
+        : shareScope;
       const next: InventoryItem = initial
         ? {
             ...initial,
@@ -95,6 +121,7 @@ export function ItemForm({ householdId, initial, onSaved, onCancel }: Props) {
             defaultUnitOfDose: data.defaultUnitOfDose,
             vendor: data.vendor,
             notesMd: data.notesMd,
+            shareScope: effectiveShareScope,
             updatedAt: now,
           }
         : {
@@ -112,6 +139,12 @@ export function ItemForm({ householdId, initial, onSaved, onCancel }: Props) {
             defaultUnitOfDose: data.defaultUnitOfDose,
             vendor: data.vendor,
             notesMd: data.notesMd,
+            // creatorUserId stamped by the local repo from the active
+            // user; the server re-stamps from the JWT principal on push
+            // so a tampered client cannot claim ownership for someone
+            // else (A0.2).
+            creatorUserId: activeUserId,
+            shareScope: effectiveShareScope,
           };
       const saved = await repo.upsert(next);
       onSaved(saved);
@@ -149,6 +182,53 @@ export function ItemForm({ householdId, initial, onSaved, onCancel }: Props) {
           ))}
         </select>
       </label>
+      {isSoloHousehold ? (
+        <p className="text-xs text-text-muted">
+          You're the only member of this household — items default to private. Add a member
+          to share inventory.
+        </p>
+      ) : (
+        <fieldset className="block text-sm">
+          <legend className="block font-medium">Visibility</legend>
+          <div
+            role="radiogroup"
+            aria-label="Visibility"
+            className="mt-1 inline-flex rounded-md border border-paper-300 bg-paper-50 p-0.5"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={shareScope === 'private'}
+              onClick={() => setShareScope('private')}
+              className={
+                shareScope === 'private'
+                  ? 'flex items-center gap-1.5 rounded-sm bg-accent-primary px-3 py-1.5 text-xs text-white shadow-glow'
+                  : 'flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs text-text-secondary hover:bg-paper-200'
+              }
+            >
+              <Lock className="h-3 w-3" aria-hidden /> Private
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={shareScope === 'household'}
+              onClick={() => setShareScope('household')}
+              className={
+                shareScope === 'household'
+                  ? 'flex items-center gap-1.5 rounded-sm bg-accent-primary px-3 py-1.5 text-xs text-white shadow-glow'
+                  : 'flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs text-text-secondary hover:bg-paper-200'
+              }
+            >
+              <Users className="h-3 w-3" aria-hidden /> Share with household
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-text-muted">
+            {shareScope === 'private'
+              ? 'Only you can see, log doses against, or build protocols from this item.'
+              : 'Everyone in the household can see and use this item.'}
+          </p>
+        </fieldset>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm">
           <span className="block font-medium">Strength (optional)</span>

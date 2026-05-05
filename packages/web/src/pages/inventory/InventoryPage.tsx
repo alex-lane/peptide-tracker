@@ -1,5 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Plus, Package, Beaker, Pill as PillIcon, Wind, type LucideIcon } from 'lucide-react';
+import {
+  Plus,
+  Package,
+  Beaker,
+  Pill as PillIcon,
+  Wind,
+  Lock,
+  type LucideIcon,
+} from 'lucide-react';
 import type { InventoryItem } from '@/db';
 import { useActive } from '@/app/useActive';
 import { Modal } from '@/components/Modal';
@@ -114,6 +122,7 @@ export function InventoryPage() {
             <InventoryListRow
               key={row.item.id}
               row={row}
+              activeUserId={active.userId}
               onOpen={() => setOpenItemId(row.item.id)}
             />
           ))}
@@ -128,6 +137,7 @@ export function InventoryPage() {
       >
         <ItemForm
           householdId={active.householdId!}
+          activeUserId={active.userId!}
           onSaved={() => setAdding(false)}
           onCancel={() => setAdding(false)}
         />
@@ -147,11 +157,25 @@ export function InventoryPage() {
   );
 }
 
-function InventoryListRow({ row, onOpen }: { row: InventoryRow; onOpen: () => void }) {
+function InventoryListRow({
+  row,
+  activeUserId,
+  onOpen,
+}: {
+  row: InventoryRow;
+  activeUserId: string | null;
+  onOpen: () => void;
+}) {
   const { item, batches, activeBatch } = row;
   const expiringSoon = activeBatch?.expiresAt
     ? (daysUntil(activeBatch.expiresAt) ?? 99) <= 14
     : false;
+  // Lock indicator: only show on items the CURRENT user owns AND that
+  // are private. The server already filters out other members' private
+  // items so they never reach this list — the badge here is a self-
+  // reminder for the creator that this item isn't visible to family.
+  const isMyPrivate =
+    item.shareScope === 'private' && !!activeUserId && item.creatorUserId === activeUserId;
   return (
     <li>
       <button
@@ -162,7 +186,15 @@ function InventoryListRow({ row, onOpen }: { row: InventoryRow; onOpen: () => vo
         <div className="flex items-start gap-3">
           <ProductIcon form={item.form} />
           <div className="min-w-0 flex-1">
-            <p className="text-base">{item.name}</p>
+            <p className="flex items-center gap-1.5 text-base">
+              {item.name}
+              {isMyPrivate && (
+                <Lock
+                  className="h-3.5 w-3.5 text-accent-cyan"
+                  aria-label="Private to you"
+                />
+              )}
+            </p>
             <p className="text-xs text-text-muted">
               {labelForm(item.form)} · {batches.length} batch{batches.length === 1 ? '' : 'es'}
             </p>

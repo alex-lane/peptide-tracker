@@ -109,6 +109,11 @@ export function BatchForm({ householdId, item, initial, onSaved, onCancel }: Pro
             purchasedAt: parsed.data.purchasedAt,
             purchasePrice: parsed.data.purchasePrice,
             notesMd: parsed.data.notesMd,
+            // Cascade share scope + creator from the parent item — a
+            // batch's visibility is determined by its product, not by
+            // who happens to be adding the batch right now.
+            creatorUserId: item.creatorUserId,
+            shareScope: item.shareScope,
           };
       const saved = await repo.upsert(next);
       onSaved(saved);

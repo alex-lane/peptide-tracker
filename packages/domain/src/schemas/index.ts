@@ -136,12 +136,16 @@ export const inventoryItem = baseEntity.extend({
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .optional(),
-  /** Member who created this item. Server-stamped on insert. Nullable
-   * during the A0.1 → A0.3 rollout window for backfilled rows. */
+  /** Member who created this item. Optional in the wire format so old
+   * clients can still push; the server stamps from the JWT principal
+   * on insert (A0.2) and the storage layer enforces NOT NULL via
+   * migrations 0004-0006. After backfill + server stamping, every
+   * row read back from the server has this field populated. */
   creatorUserId: id.optional(),
-  /** Visibility within the household. Defaults to `private` on new items
-   * (A0.3); existing rows backfilled to `household` to preserve current
-   * behavior. */
+  /** Visibility within the household. Optional in the wire format for
+   * the same reason. New items from A0.3 UI default to 'private';
+   * legacy rows backfilled to 'household' in 0003 to preserve
+   * current behavior. */
   shareScope: shareScope.optional(),
 });
 export type InventoryItem = z.infer<typeof inventoryItem>;
@@ -188,7 +192,8 @@ export const inventoryBatch = baseEntity.extend({
   reconstitution: reconstitutionRecord.optional(),
   notesMd: z.string().max(20_000).optional(),
   /** Cascaded from the parent inventory item; child rows inherit so reads
-   * can filter by share scope without joining the item table. */
+   * can filter by share scope without joining the item table. Optional
+   * in the wire format for backward compatibility (server stamps). */
   creatorUserId: id.optional(),
   shareScope: shareScope.optional(),
 });
@@ -199,7 +204,7 @@ export const supplyItem = baseEntity.extend({
   remainingCount: z.number().int().nonnegative(),
   thresholdLowCount: z.number().int().nonnegative().optional(),
   notesMd: z.string().max(5000).optional(),
-  /** Cascaded from the parent inventory item. */
+  /** Cascaded from the parent inventory item. Optional in wire format. */
   creatorUserId: id.optional(),
   shareScope: shareScope.optional(),
 });
