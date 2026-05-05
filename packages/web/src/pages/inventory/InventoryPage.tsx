@@ -44,7 +44,7 @@ function matchesFilter(form: InventoryItem['form'], filter: FormFilter): boolean
 
 export function InventoryPage() {
   const active = useActive();
-  const rows = useInventory(active.householdId);
+  const rows = useInventory(active.householdId, active.userId);
   const [filter, setFilter] = useState<FormFilter>('all');
   const [adding, setAdding] = useState(false);
   const [openItemId, setOpenItemId] = useState<string | null>(null);

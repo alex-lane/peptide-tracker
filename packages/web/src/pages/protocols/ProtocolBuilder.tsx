@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Trash2 } from 'lucide-react';
 import {
+  filterByShareScope,
   getDb,
   newId,
   nowIso,
@@ -109,17 +110,26 @@ export function ProtocolBuilder({
   const inventoryItems = useLiveQuery(
     async () => {
       const all = await db.inventoryItems.where('householdId').equals(householdId).toArray();
-      return all.filter((i) => !i.deletedAt).sort((a, b) => a.name.localeCompare(b.name));
+      // The picker filters by the protocol's user — Alice building Alice's
+      // protocol sees Alice's private items + household-shared items.
+      const visible = filterByShareScope(
+        all.filter((i) => !i.deletedAt),
+        userId,
+      );
+      return visible.sort((a, b) => a.name.localeCompare(b.name));
     },
-    [householdId],
+    [householdId, userId],
     [],
   );
   const inventoryBatches = useLiveQuery(
     async () => {
       const all = await db.inventoryBatches.where('householdId').equals(householdId).toArray();
-      return all.filter((b) => !b.deletedAt);
+      return filterByShareScope(
+        all.filter((b) => !b.deletedAt),
+        userId,
+      );
     },
-    [householdId],
+    [householdId, userId],
     [],
   );
 

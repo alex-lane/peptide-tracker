@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Download, Plus, Trash2, TrendingUp, Target, TrendingDown, Activity, FileDown } from 'lucide-react';
 import {
+  filterByShareScope,
   getDb,
   type CustomMetric,
   type DoseLog,
@@ -70,21 +71,27 @@ export function InsightsPage() {
   const inventoryBatches = useLiveQuery(
     async () =>
       active.householdId
-        ? (
-            await db.inventoryBatches.where('householdId').equals(active.householdId).toArray()
-          ).filter((b) => !b.deletedAt)
+        ? filterByShareScope(
+            (
+              await db.inventoryBatches.where('householdId').equals(active.householdId).toArray()
+            ).filter((b) => !b.deletedAt),
+            active.userId,
+          )
         : [],
-    [active.householdId],
+    [active.householdId, active.userId],
     [],
   );
   const inventoryItems = useLiveQuery(
     async () =>
       active.householdId
-        ? (await db.inventoryItems.where('householdId').equals(active.householdId).toArray()).filter(
-            (i) => !i.deletedAt,
+        ? filterByShareScope(
+            (
+              await db.inventoryItems.where('householdId').equals(active.householdId).toArray()
+            ).filter((i) => !i.deletedAt),
+            active.userId,
           )
         : [],
-    [active.householdId],
+    [active.householdId, active.userId],
     [],
   );
 
