@@ -43,6 +43,8 @@ export async function seedHousehold(db: PeptideDb): Promise<TestSeed> {
     form: 'injectable_lyophilized',
     defaultStrength: { value: 5, unit: 'mg' },
     defaultUnitOfDose: 'mcg',
+    creatorUserId: alex.id,
+    shareScope: 'household',
   };
   const batch: InventoryBatch = {
     id: newId(),
@@ -62,6 +64,8 @@ export async function seedHousehold(db: PeptideDb): Promise<TestSeed> {
       resultingConcentration: { value: 2.5, unit: 'mg', perMl: true },
       byUserId: alex.id,
     },
+    creatorUserId: alex.id,
+    shareScope: 'household',
   };
   await db.households.put(household);
   await db.userProfiles.put(alex);

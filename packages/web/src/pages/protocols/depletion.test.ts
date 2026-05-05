@@ -23,6 +23,8 @@ function makeBatch(overrides: Partial<InventoryBatch>): InventoryBatch {
       resultingConcentration: { value: 2.5, unit: 'mg', perMl: true },
       byUserId: 'u1',
     },
+    creatorUserId: 'u1',
+    shareScope: 'household',
     ...overrides,
   };
 }
