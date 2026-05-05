@@ -44,6 +44,21 @@ jobs:
       - name: Build web
         run: pnpm --filter @peptide/web build
 
+      # ─── D1 migrations ─────────────────────────────────────────────────
+      # Apply pending migrations to the remote D1 database BEFORE the
+      # Worker that depends on them deploys. wrangler d1 migrations apply
+      # is idempotent — it tracks applied migrations in a system table and
+      # skips ones that have already run. Adding new migration files to
+      # packages/worker/migrations/ is the only step required to ship a
+      # schema change; this workflow picks them up automatically.
+      - name: Apply D1 migrations (remote)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/worker
+          command: d1 migrations apply DB --remote
+
       # ─── Worker ───────────────────────────────────────────────────────
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
